@@ -16,10 +16,12 @@ Idées de départ:
 **Personnage principal**:
  - Victor Blackwell
  - Patient dans un hôpital psychiatrique
- - Porte une blouse tachée (laisser vague pour que le joueur ne sache pas qui est le personnage encore)
- - Se réveille dans un lit, dans une chambre d'hôpital. Il n'a aucun souvenir, il ne connaît pas son nom, pourquoi il est la. Il ne sait pas si il est un patient ou un docteur.
+ - Porte une blouse tachée (laisser vague pour que le joueur ne sache pas qui est le personnage encore), avec une étiquette trop ensanglantée pour déchiffrer le prénom, on voit que 'V...B...'
+ - Se réveille, allongé sur le sol froid de l'hôpital de , dans une chambre d'hôpital. Il n'a aucun souvenir, il ne connaît pas son nom, pourquoi il est la. Il ne sait pas si il est un patient ou un docteur.
  - Il trouve un bout de verre cassé par terre, qu'il garde sur lui pour se défendre
  - Il doit s'échapper, en parlant à des PNJ (en dehors des docteurs/monstes(zombies)) qui lui donnent des indication pour trouver les clés pour sortir. A chaque fois qu'il quitte une personne, celle-ci lui donne un vers de poésie (chacun sa raison) qui forme un acrostiche révélant à Victor son nom, lui rendant tous ses souvenirs.
+ - Les PNJ parlent sous forme d'énigme.
+ - *Backstory* : Blackwell a tué, dans sa folie, tous les patients de l'hôpital + les soignants, puis a subi une overdose d'opioïde en essayant de mettre fin à ses jours. En se réveillant, il est totalement déboussolé. Les gens 'nnormaux' à qui il parle sont en réalité des créations de sa folie qui lui donnent des détails peu à peu sur l'origine de cette situation, toutes des personnes dont il se sent subconsciemment coupable d'avoir tué. Les esprits de l'hôpital s'éveillent la nuit pour se venger des meurtres de Victor, essayant de le tuer à leur tour suos la forme de créatures ~zombie.
  - 
 ![9434944_1](https://github.com/user-attachments/assets/4d66ba04-944d-466f-95f7-5d7db3f5bcd2)
 
@@ -35,10 +37,14 @@ Idées de départ:
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/0c4ebdb0-d983-4011-a98f-f34c8d5eaa7e" />
 
 
-bibliothèque utilisée: 
+**Bibliothèque utilisée**:
 
-**Types d'ennemis**: Les docteurs de l'hôpital
+ - Pygame
 
+**Types d'ennemis**:
+
+ - Les docteurs de l'hôpital
+ - Les patients 
 **Mouvements/attaques possibles**: 
 
 nombre de niveau:
