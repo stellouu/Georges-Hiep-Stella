@@ -12,28 +12,37 @@ Idées de départ:
 - Dans notre monde
 - Screamers
 - Psychologique
-- 
 
-nombre de joueurs: 1 + des PNJ
+**Personnage principal**:
+ - 
 
-types/création de graphiques: 
+**Nombre de joueurs** : 1 + des PNJ
+
+**Types/création de graphiques**: 
 
  - 2D graphics
  - Même esprit et configuration des personnage que les vieux jeux (ex Pokemon)
- - 
+
+![00-featured-pokemon-demo-game-inbrowser](https://github.com/user-attachments/assets/81b05fbc-cdb3-4712-bc71-e86f81bf77bd)
+
+
 
 bibliothèque utilisée: 
 
-types d'ennemis: Les docteurs de l'hôpital
+**Types d'ennemis**: Les docteurs de l'hôpital
 
-mouvements/attaques possibles:
+**Mouvements/attaques possibles**: 
 
 nombre de niveau:
 
 système de score de vie: 
  - Système basique, le joueur commence avec 3 vies
 
-contrôles souris/clavier:
+contrôles souris/clavier: 
+
+ - Z pour le nord, D pour l'est, S pour le sud et Q pour l'Ouest
+ - E pour les intéraction
+ - F pour lampe torche
 
 gestion des highscores:
 
@@ -49,5 +58,6 @@ inspirations:
 
  - Silent Hill
  - Resident Evil
+ - https://www.pressplaygaming.net/articles/2024/12/04/ppg-game-of-the-year-2024-22-the-best-top-down-rpgs
 
                     
