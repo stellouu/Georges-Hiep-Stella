@@ -57,8 +57,11 @@ Idées de départ:
     - A trouver caché dans l'hôpital 
 
 **Système de score de vie**: 
- - Système basique, le joueur commence avec une barre de vie qui diminue avec la fatigue
+ - Système basique, le joueur commence avec une barre de vie qui diminue avec la fatigue (-1 toutes les 3 secondes sur 200 HP, laissant 10min au joueur avant de devoir se soigner)
  - Pour reprendre de la force, Victor doit prendre ses médicaments, situés à côté du point de départ sur une table.
+
+![360_F_1573978198_ty8a15RWmnpEk83Xa1wYZu5HClyDShLd](https://github.com/user-attachments/assets/e1b1a763-638e-4445-9f0c-d4bc0a2008e8)
+
 
 **Contrôles souris/clavier**: 
 
