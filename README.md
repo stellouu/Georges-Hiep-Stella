@@ -27,6 +27,11 @@ Idées de départ:
 
 **Nombre de joueurs** : 1 + des PNJ
 
+Les personnages parleront comme ça:
+
+![images](https://github.com/user-attachments/assets/9d6e3462-8303-4b32-a580-7cc776ffd9dd)
+
+
 **Types/création de graphiques**: 
 
  - 2D graphics
