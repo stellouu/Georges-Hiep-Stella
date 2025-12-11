@@ -1,8 +1,7 @@
 # Georges-Hiep-Stella
 Groupe de 1ère NSI CIV - Projet 2025-2026 
 
-Idees:
-
+Idées de départ:
 - Jeu en 2D
 - Jeu d'action
 - Histoire
@@ -11,3 +10,7 @@ Idees:
 - Jeu de pêche
 - Escape Game
 - Jeu basé sur des légendes
+
+Idée finale:
+  - 
+  - 
