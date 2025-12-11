@@ -11,6 +11,13 @@ Idées de départ:
 - Escape Game
 - Jeu basé sur des légendes
 
-Idée finale:
-  - 
-  - 
+nombre de joueurs:
+types/création de graphiques:
+bibliothèque utilisée:
+types d'ennemis:
+mouvements/attaques possibles:
+nombre de niveau:
+système de score de vie:
+contrôles souris/clavier:
+gestion des highscores:
+gestion de comptes:
