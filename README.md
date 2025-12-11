@@ -14,7 +14,14 @@ Idées de départ:
 - Psychologique
 
 **Personnage principal**:
+ - Victor Blackwell
+ - Patient dans un hôpital psychiatrique
+ - Porte une blouse tachée (laisser vague pour que le joueur ne sache pas qui et le personnage encore)
+ - Se réveille dans un lit, dans une chambre d'hôpital. Il n'a aucun souvenir, il ne connaît pas son nom, pourquoi il est la. Il ne sait pas si il est un patient ou un docteur.
+ - Il trouve un bout de verre cassé par terre, qu'il garde sur lui pour se défendre
+ - Il doit s'échapper, en parlant à des PNJ (en dehors des docteurs/monstes(zombies)) qui lui donnent des indication pour trouver les clés pour sortir. A chaque fois qu'il quitte une personne, celle-ci lui donne un vers de poésie (chacun sa raison) qui forme un acrostiche révélant à Victor son nom, lui rendant tous ses souvenirs.
  - 
+![9434944_1](https://github.com/user-attachments/assets/4d66ba04-944d-466f-95f7-5d7db3f5bcd2)
 
 **Nombre de joueurs** : 1 + des PNJ
 
