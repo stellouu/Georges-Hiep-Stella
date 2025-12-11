@@ -25,6 +25,7 @@ Idées de départ:
 
 ![00-featured-pokemon-demo-game-inbrowser](https://github.com/user-attachments/assets/81b05fbc-cdb3-4712-bc71-e86f81bf77bd)
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/0c4ebdb0-d983-4011-a98f-f34c8d5eaa7e" />
 
 
 bibliothèque utilisée: 
