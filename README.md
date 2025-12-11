@@ -44,25 +44,31 @@ Idées de départ:
 **Types d'ennemis**:
 
  - Les docteurs de l'hôpital
- - Les patients 
+ - Les patients (sous forme de monstre)
+
+<img width="640" height="240" alt="xoByzu" src="https://github.com/user-attachments/assets/be4d3b59-ac16-4d4b-85a1-79fa8e8cdd32" />
+
+
 **Mouvements/attaques possibles**: 
 
-nombre de niveau:
+ - Bout de verre (Attaque faibles)
+ - Couteau (Attaque plus forte)
+ - Révolver (Attaque puissante + à distance)
+    - A trouver caché dans l'hôpital 
 
-système de score de vie: 
- - Système basique, le joueur commence avec 3 vies
+**Système de score de vie**: 
+ - Système basique, le joueur commence avec une barre de vie qui diminue avec la fatigue
+ - Pour reprendre de la force, Victor doit prendre ses médicaments, situés à côté du point de départ sur une table.
 
-contrôles souris/clavier: 
+**Contrôles souris/clavier**: 
 
  - Z pour le nord, D pour l'est, S pour le sud et Q pour l'Ouest
  - E pour les intéraction
  - F pour lampe torche
+ - X pour l'inventaire
+ - Clic de souris pour attaquer
 
-gestion des highscores:
-
-gestion de comptes:
-
-idées de musiques: 
+**Idées de musiques**: 
 
  - https://www.youtube.com/watch?v=_Qr2T1az1Ck&list=PL0J7CU72FU1M6eExlRP8QikATJ38TD86Y
  - https://www.youtube.com/watch?v=AO5u-ylgaIY&list=PL0J7CU72FU1M6eExlRP8QikATJ38TD86Y&index=7
