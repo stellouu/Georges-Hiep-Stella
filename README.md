@@ -51,26 +51,25 @@ Les personnages parleront comme ça:
 
 **Types d'ennemis**:
 
- - Les docteurs de l'hôpital
- - Les patients (sous forme de monstre)
+ - Les docteurs de l'hôpital 50pv et -5pv
+ - Les patients (sous forme de monstre) 75pv et -5pv
+ - une "IA" très simple
 
 <img width="640" height="240" alt="xoByzu" src="https://github.com/user-attachments/assets/be4d3b59-ac16-4d4b-85a1-79fa8e8cdd32" />
 
 
 **Mouvements/attaques possibles**: 
 
- - Ennemis :
-    - 
- - Bout de verre (Attaque faibles)
- - Couteau (Attaque plus forte)
- - Révolver (Attaque puissante + à distance)
+ - Bout de verre (Attaque faibles) -15pv
+ - Couteau (Attaque plus forte) -40pv
+ - Révolver (Attaque puissante + à distance) -75pv
     - A trouver caché dans l'hôpital
       
 
 **Système de score de vie**: 
  - Système basique, le joueur commence avec une barre de vie qui diminue avec la fatigue (-1 toutes les 3 secondes sur 200 HP, laissant 10min au joueur avant de devoir se soigner)
  - Pour reprendre de la force, Victor doit prendre ses médicaments, situés à côté du point de départ sur une table.
- - jusqu'à 5 sauvegardes différentes
+ - jusqu'à 5 sauvegardes différentes + 1 sauvegarde automatique
 
 ![360_F_1573978198_ty8a15RWmnpEk83Xa1wYZu5HClyDShLd](https://github.com/user-attachments/assets/e1b1a763-638e-4445-9f0c-d4bc0a2008e8)
 
