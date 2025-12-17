@@ -94,5 +94,8 @@ inspirations:
  - Resident Evil
  - https://www.pressplaygaming.net/articles/2024/12/04/ppg-game-of-the-year-2024-22-the-best-top-down-rpgs
 
+**PLANNING**
+
+https://docs.google.com/document/d/1DsbgNyjJn8lrjUJJBGs9DXhaW3kmsW9MigxeV_Fo33w/edit?usp=sharing
                     
 
