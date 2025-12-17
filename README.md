@@ -95,5 +95,4 @@ inspirations:
  - https://www.pressplaygaming.net/articles/2024/12/04/ppg-game-of-the-year-2024-22-the-best-top-down-rpgs
 
                     
-Y aura-t-il des animations ? La carte est-elle entièrement visible ? Y a-t-il un défilement ? Comment sont gérés le score, les sauvegardes (s'il y en a), les obstacles ? Comment se comportent les ennemis ?
-Les réponses à ces questions (et d'autres) vont faire grandement varier la complexité de votre projet.
+
