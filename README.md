@@ -36,6 +36,9 @@ Les personnages parleront comme ça:
 
  - 2D graphics
  - Même esprit et configuration des personnage que les vieux jeux (ex Pokemon)
+ - Annimations simples
+ - La carte n'est pas entièrement visible
+ - Carte avec défilement
 
 ![00-featured-pokemon-demo-game-inbrowser](https://github.com/user-attachments/assets/81b05fbc-cdb3-4712-bc71-e86f81bf77bd)
 
@@ -56,14 +59,18 @@ Les personnages parleront comme ça:
 
 **Mouvements/attaques possibles**: 
 
+ - Ennemis :
+    - 
  - Bout de verre (Attaque faibles)
  - Couteau (Attaque plus forte)
  - Révolver (Attaque puissante + à distance)
-    - A trouver caché dans l'hôpital 
+    - A trouver caché dans l'hôpital
+      
 
 **Système de score de vie**: 
  - Système basique, le joueur commence avec une barre de vie qui diminue avec la fatigue (-1 toutes les 3 secondes sur 200 HP, laissant 10min au joueur avant de devoir se soigner)
  - Pour reprendre de la force, Victor doit prendre ses médicaments, situés à côté du point de départ sur une table.
+ - jusqu'à 5 sauvegardes différentes
 
 ![360_F_1573978198_ty8a15RWmnpEk83Xa1wYZu5HClyDShLd](https://github.com/user-attachments/assets/e1b1a763-638e-4445-9f0c-d4bc0a2008e8)
 
@@ -89,3 +96,5 @@ inspirations:
  - https://www.pressplaygaming.net/articles/2024/12/04/ppg-game-of-the-year-2024-22-the-best-top-down-rpgs
 
                     
+Y aura-t-il des animations ? La carte est-elle entièrement visible ? Y a-t-il un défilement ? Comment sont gérés le score, les sauvegardes (s'il y en a), les obstacles ? Comment se comportent les ennemis ?
+Les réponses à ces questions (et d'autres) vont faire grandement varier la complexité de votre projet.
