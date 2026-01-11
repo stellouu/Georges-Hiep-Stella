@@ -10,11 +10,11 @@ RED = (255, 0, 0)
 
 font = pygame.font.Font(None, 50)
 
-# --- Fonctions d'écran ---
+#  Fonctions d'écran #
 def menu_screen():
     run = True
     while run:
-        background = pygame.image.load("Menu.jpg").convert()
+        background = pygame.image.load("Menu.jpg").convert() # En run sur VScode avec tous les fichiers jpg ce code marchent mais j'ai du mal à l'integrer à Github #
 
         screen.blit(background, (0, 0))
 
