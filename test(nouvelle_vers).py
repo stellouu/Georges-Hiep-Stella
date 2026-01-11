@@ -10,16 +10,20 @@ RED = (255, 0, 0)
 
 font = pygame.font.Font(None, 50)
 
-#  Fonctions d'écran #
+# --- Fonctions d'écran ---
 def menu_screen():
     run = True
     while run:
-        background = pygame.image.load("Menu.jpg").convert() # En run sur VScode avec tous les fichiers jpg ce code marchent mais j'ai du mal à l'integrer à Github #
+        background = pygame.image.load("Menu.jpg").convert()
 
         screen.blit(background, (0, 0))
 
         play_text = font.render("Appuie sur ENTER pour jouer", True, WHITE)
+
+        play_warning = font.render("Jeu fait par Stella, Georges et Hiep", True, WHITE)
+
         screen.blit(play_text, (150, 300))
+        screen.blit(play_warning, (100, 350))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
