@@ -57,7 +57,7 @@ def menu_screen():
     #SECTION BOUTON JEU
 
         # --- Bouton JOUER ---
-    play_img = pygame.image.load("JOUER_boutton.png").convert_alpha()
+    play_img = pygame.image.load("JOUER_bouton.png").convert_alpha()
     play_img = pygame.transform.scale(play_img, (200, 80))
 
     screen_width, screen_height = 800, 600
@@ -65,7 +65,7 @@ def menu_screen():
     play_button = ImageButton(play_img, play_rect.topleft)
 
     # --- Bouton INFO ---
-    info_img = pygame.image.load("INFO_boutton.png").convert_alpha()
+    info_img = pygame.image.load("INFO_bouton.png").convert_alpha()
     info_img = pygame.transform.scale(info_img, (200, 80))
 
     info_rect = info_img.get_rect(center=(screen_width // 2, screen_height // 2 + 100))
@@ -151,4 +151,5 @@ def info_screen():
 # Boucle principale
 menu_screen()
 game_screen()
+
 menu_screen()  
