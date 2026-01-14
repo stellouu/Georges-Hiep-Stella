@@ -121,6 +121,7 @@ def game_screen():
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    click_sound.play()
                     run = False  
 
         pygame.display.update()
@@ -141,15 +142,11 @@ def info_screen():
             # Retour au menu si on appuie sur ECHAP
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    click_sound.play()
                     run = False
 
         pygame.display.update()
 
-
-
-
-# Boucle principale
 menu_screen()
 game_screen()
-
 menu_screen()  
