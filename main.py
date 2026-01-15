@@ -26,29 +26,40 @@ def darken_image(image, amount=90):
     return dark
 
 
-#classe pour tous les futurs boutons images
+# classe pour tous les futurs boutons images
 class ImageButton:
-    def __init__(self, image, pos):
+    def __init__(self, image, pos, scale_hover=1.08):
         self.image = image
         self.image_dark = darken_image(image)
+
         self.rect = self.image.get_rect(topleft=pos)
 
+        # --- images agrandies ---
+        w, h = image.get_size()
 
-#fonction pour dessiner le bouton
+        self.image_hover = pygame.transform.smoothscale(
+            self.image, (int(w * scale_hover), int(h * scale_hover))
+        )
+
+        self.image_dark_hover = darken_image(self.image_hover)
+
+        # rect centrée (pour éviter le saut)
+        self.rect_hover = self.image_hover.get_rect(center=self.rect.center)
+
+    # fonction pour dessiner le bouton
     def draw(self, screen):
         if self.rect.collidepoint(pygame.mouse.get_pos()):
-            screen.blit(self.image_dark, self.rect)
+            screen.blit(self.image_dark_hover, self.rect_hover)
         else:
             screen.blit(self.image, self.rect)
 
-#fonction pour vérifier si le bouton est cliqué (souris dessus)
+    # fonction pour vérifier si le bouton est cliqué
     def is_clicked(self, event):
         return (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
             and self.rect.collidepoint(event.pos)
         )
-
 
 
 #ECRAN MENU
