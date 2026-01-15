@@ -145,6 +145,11 @@ def game_screen():
             if retour_button.is_clicked(event):
                 click_sound.play()
                 return "menu"  # Retour au menu
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_l: #appuyer sur L pour tester l'écran de fin
+                    click_sound.play()
+                    return "fin"  # GAMEOVER screeen
   
 
         pygame.display.update()
@@ -179,31 +184,54 @@ def info_screen():
         pygame.display.update()
 
 
-#-------------------          NE PLUS REGARDER A PARTIR DE LA, JE TRAVAILLE DESSUS!! 
+#-------------------          NE PLUS REGARDER A PARTIR DE LA, JE TRAVAILLE DESSUS!!
+
+
+
 
 def fin_screen():
 
-    #fin_image = pygame.image.load("FIN_page.png").cnovert()
+    screen_width, screen_height = 800, 600
+     # --- Bouton QUITTER ---
+    quitter_img = pygame.image.load("QUITTER_bouton.png").convert_alpha()
+    quitter_img = pygame.transform.scale(quitter_img, (200, 80))
 
+    quitter_rect = quitter_img.get_rect(center=(screen_width // 2, screen_height // 2))
+    quitter_button = ImageButton(quitter_img, quitter_rect.topleft)
+
+        # --- Bouton REJOUER ---
+    rejouer_img = pygame.image.load("REJOUER_bouton.png").convert_alpha()
+    rejouer_img = pygame.transform.scale(rejouer_img, (200, 80))
+
+    rejouer_rect = rejouer_img.get_rect(center=(screen_width // 2, screen_height // 2 + 100))
+    rejouer_button = ImageButton(rejouer_img, rejouer_rect.topleft)
     run = True
+
+    fin_image = pygame.image.load("FIN_page.png").convert()
 
     while run:
         
-        #screen.blit(fin_image, (0, 0))
+        screen.blit(fin_image, (0, 0))
 
+        quitter_button.draw(screen)
+        rejouer_button.draw(screen)
 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if rejouer_button.is_clicked(event):
+                click_sound.play()
+                return "game"  # Rejouer le jeu
+            
+            if quitter_button.is_clicked(event):
+                pygame.quit()
+                exit()
+                
+            
 
+        pygame.display.update()
 
-
-
-# Boucle principale
-#while True:
- #   if state == "menu":
-            state = menu_screen()
-  #  elif state == "game":
-            state = game_screen()        
-  #  elif state == "info":
-            state = info_screen()
 
 # Boucle principale
 while True:
@@ -213,3 +241,5 @@ while True:
             state = game_screen()        
     elif state == "info":
             state = info_screen()
+    elif state == "fin":
+            state = fin_screen()
