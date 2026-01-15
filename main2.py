@@ -75,13 +75,6 @@ def menu_screen():
     info_rect = info_img.get_rect(center=(screen_width // 2, screen_height // 2 + 100))
     info_button = ImageButton(info_img, info_rect.topleft)
 
-        # --- Bouton RETOUR ---
-    retour_img = pygame.image.load("retour.png").convert_alpha()
-    retour_img = pygame.transform.scale(retour_img, (200, 80))
-
-    retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
-    retour_button = ImageButton(retour_img, retour_rect.topleft)
-
     run = True
     while run:
         background = pygame.image.load("menu.png").convert()
@@ -89,7 +82,6 @@ def menu_screen():
 
         play_button.draw(screen)
         info_button.draw(screen)
-        retour_button.draw(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -103,10 +95,6 @@ def menu_screen():
             if info_button.is_clicked(event):
                 click_sound.play()
                 return "info"  # Affiche l'écran d'info
-            
-            if retour_button.is_clicked(event):
-                click_sound.play()
-                return "menu"  # Retour au menu
 
 
         pygame.display.update()
@@ -142,13 +130,25 @@ def game_screen():
 
         pygame.display.update()
 
+
+# ECRAN INFO
+
 def info_screen():
 
     info_image = pygame.image.load("INFO_page.png").convert()
 
+    # --- Bouton RETOUR ---
+    retour_img = pygame.image.load("retour.png").convert_alpha()
+    retour_img = pygame.transform.scale(retour_img, (200, 80))
+
+    screen_width, screen_height = 800, 600
+    retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
+    retour_button = ImageButton(retour_img, retour_rect.topleft)
+
     run = True
     while run:
         screen.blit(info_image, (0, 0))
+        retour_button.draw(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -160,6 +160,11 @@ def info_screen():
                 if event.key == pygame.K_ESCAPE:
                     click_sound.play()
                     return "menu" # Retour au menu
+
+            # Retour au menu si le bouton retour est cliqué
+            if retour_button.is_clicked(event):
+                click_sound.play()
+                return "menu"
 
         pygame.display.update()
 
@@ -174,3 +179,12 @@ while True:
             state = game_screen()        
     elif state == "info":
             state = info_screen()
+            state = game_screen()        
+    elif state == "info":
+            state = info_screen()
+
+
+
+
+
+
