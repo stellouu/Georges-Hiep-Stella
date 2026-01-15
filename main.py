@@ -49,11 +49,15 @@ class ImageButton:
             and self.rect.collidepoint(event.pos)
         )
 
+
+
 #ECRAN MENU
 
+state = "menu"
 
 def menu_screen():
 
+    
     #SECTION BOUTON JEU
 
         # --- Bouton JOUER ---
@@ -64,7 +68,7 @@ def menu_screen():
     play_rect = play_img.get_rect(center=(screen_width // 2, screen_height // 2))
     play_button = ImageButton(play_img, play_rect.topleft)
 
-    # --- Bouton INFO ---
+        # --- Bouton INFO ---
     info_img = pygame.image.load("INFO_bouton.png").convert_alpha()
     info_img = pygame.transform.scale(info_img, (200, 80))
 
@@ -86,11 +90,11 @@ def menu_screen():
 
             if play_button.is_clicked(event):
                 click_sound.play()
-                run = False  # Quitte le menu pour lancer le jeu
+                return "game"  # Quitte le menu pour lancer le jeu
 
             if info_button.is_clicked(event):
                 click_sound.play()
-                info_screen()  # Affiche l'écran d'info
+                return "info"  # Affiche l'écran d'info
 
 
         pygame.display.update()
@@ -122,7 +126,7 @@ def game_screen():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     click_sound.play()
-                    run = False  
+                    return "menu"  # Retour au menu  
 
         pygame.display.update()
 
@@ -143,10 +147,18 @@ def info_screen():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     click_sound.play()
-                    run = False
+                    return "menu" # Retour au menu
 
         pygame.display.update()
 
-menu_screen()
-game_screen()
-menu_screen()  
+
+
+
+# Boucle principale
+while True:
+    if state == "menu":
+            state = menu_screen()
+    elif state == "game":
+            state = game_screen()        
+    elif state == "info":
+            state = info_screen()
