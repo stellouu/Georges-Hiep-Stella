@@ -195,11 +195,6 @@ def info_screen():
         pygame.display.update()
 
 
-#-------------------          NE PLUS REGARDER A PARTIR DE LA, JE TRAVAILLE DESSUS!!
-
-
-
-
 def fin_screen():
 
     screen_width, screen_height = 800, 600
@@ -233,7 +228,7 @@ def fin_screen():
                 exit()
             if rejouer_button.is_clicked(event):
                 click_sound.play()
-                return "game"  # Rejouer le jeu
+                return "menu"  # Rejouer le jeu
             
             if quitter_button.is_clicked(event):
                 pygame.quit()
@@ -254,3 +249,4 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
+
