@@ -1,5 +1,4 @@
-from email.mime import image
-from pdb import run
+
 import pygame
 pygame.init()
 pygame.mixer.init()
@@ -16,6 +15,7 @@ pygame.display.set_caption("menu + jeu + info")
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+scale = 3
 
 font = pygame.font.Font(None, 50)
 
@@ -25,6 +25,61 @@ def darken_image(image, amount=90):
     dark.fill((amount, amount, amount), special_flags=pygame.BLEND_RGB_SUB) #malgré alpha qd mm mettre RBG pas RGBA
     return dark
 
+class Player:
+    def __init__(self, x, y, width, height, speed, screen_width, screen_height):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.speed = speed
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        #load sprite
+
+        self.img_front = pygame.image.load("front.png").convert_alpha()
+        self.img_back = pygame.image.load("back.png").convert_alpha()
+        self.img_left = pygame.image.load("left.png").convert_alpha()
+        self.img_right = pygame.image.load("right.png").convert_alpha()
+
+        self.img_front = pygame.transform.scale(self.img_front, (self.img_front.get_width()*scale, self.img_front.get_height()*scale))
+        self.img_back = pygame.transform.scale(self.img_back, (self.img_back.get_width()*scale, self.img_back.get_height()*scale))
+        self.img_left = pygame.transform.scale(self.img_left, (self.img_left.get_width()*scale, self.img_left.get_height()*scale))
+        self.img_right = pygame.transform.scale(self.img_right, (self.img_right.get_width()*scale, self.img_right.get_height()*scale))
+
+        #perso au debut face a nous
+        self.image = self.img_front
+        self.x = float(x)
+        self.y = float(y)
+
+    def move(self, keys):
+        if keys[pygame.K_q]:
+            self.x -= self.speed
+            self.image = self.img_left
+        if keys[pygame.K_d]:
+            self.x += self.speed
+            self.image = self.img_right
+        if keys[pygame.K_z]:
+            self.y -= self.speed
+            self.image = self.img_back
+        if keys[pygame.K_s]:
+            self.y += self.speed
+            self.image = self.img_front
+
+        self.rect.x = int(self.x)
+        self.rect.y = int(self.y)
+
+        #limites ecran
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > self.screen_width:
+            self.rect.right = self.screen_width
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > self.screen_height:
+            self.rect.bottom = self.screen_height
+
+    def update(self, keys):
+        self.move(keys)
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
 
 # classe pour tous les futurs boutons images
 class ImageButton:
@@ -86,13 +141,6 @@ def menu_screen():
     info_rect = info_img.get_rect(center=(screen_width // 2, screen_height // 2 + 100))
     info_button = ImageButton(info_img, info_rect.topleft)
 
-        # --- Bouton RETOUR ---
-    retour_img = pygame.image.load("retour.png").convert_alpha()
-    retour_img = pygame.transform.scale(retour_img, (80, 40))
-
-    retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
-    retour_button = ImageButton(retour_img, retour_rect.topleft)
-
     run = True
     while run:
         background = pygame.image.load("menu.png").convert()
@@ -130,23 +178,15 @@ def game_screen():
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
 
-    player = pygame.Rect(375, 275, 50, 50)
+    player = Player(375, 275, 64, 64, speed=0.1, screen_width =800, screen_height=600)
     run = True
 
     while run:
         screen.fill(BLACK)
-        pygame.draw.rect(screen, RED, player)
-        retour_button.draw(screen)
-
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_q]:
-            player.x -= 1
-        if keys[pygame.K_d]:
-            player.x += 1
-        if keys[pygame.K_z]:
-            player.y -= 1
-        if keys[pygame.K_s]:
-            player.y += 1
+        player.update(keys)
+        player.draw(screen)
+        retour_button.draw(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -187,13 +227,11 @@ def info_screen():
                 pygame.quit()
                 exit()
 
-            # Retour au menu si on appuie sur ECHAP
             if retour_button.is_clicked(event):
                 click_sound.play()
                 return "menu"  # Retour au menu # Retour au menu
 
         pygame.display.update()
-
 
 def fin_screen():
 
@@ -228,7 +266,7 @@ def fin_screen():
                 exit()
             if rejouer_button.is_clicked(event):
                 click_sound.play()
-                return "menu"  # Rejouer le jeu
+                return "menu"  # Revenir au menu
             
             if quitter_button.is_clicked(event):
                 pygame.quit()
@@ -249,4 +287,3 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
-
