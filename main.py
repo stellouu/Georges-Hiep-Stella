@@ -19,6 +19,58 @@ scale = 3
 
 font = pygame.font.Font(None, 50)
 
+# ================== INVENTAIRE (5 cases) ==================
+INV_SLOTS = 5
+inv_selected = 0
+inv_items = [None] * INV_SLOTS  # ex: ["Key", "Med", None, None, "Badge"]
+
+def inv_add(item_name):
+    """Ajoute l'objet dans la première case vide. Retourne True si OK."""
+    global inv_items
+    for i in range(INV_SLOTS):
+        if inv_items[i] is None:
+            inv_items[i] = item_name
+            return True
+    return False
+
+def inv_draw(screen, w, h):
+    global inv_selected, inv_items
+    bar_h = 80
+    slot_w, slot_h = 56, 56
+    gap = 8
+
+    total_w = INV_SLOTS * slot_w + (INV_SLOTS - 1) * gap
+    start_x = (w - total_w) // 2
+    start_y = h - bar_h + (bar_h - slot_h) // 2
+
+
+
+    for i in range(INV_SLOTS):
+        x = start_x + i * (slot_w + gap)
+        y = start_y
+        rect = pygame.Rect(x, y, slot_w, slot_h)
+
+        # FOND OPAQUE (cache le jeu derrière)
+        pygame.draw.rect(screen, (0, 0, 0), rect)
+
+
+        # contour
+        if i == inv_selected:
+            pygame.draw.rect(screen, (230, 230, 230), rect, 3)
+        else:
+            pygame.draw.rect(screen, (120, 120, 120), rect, 2)
+
+        # numéro 1..5
+        num = pygame.font.Font(None, 26).render(str(i + 1), True, (220, 220, 220))
+        screen.blit(num, (x + 4, y + 2))
+
+        # item (texte)
+        item = inv_items[i]
+        if item is not None:
+            item_txt = pygame.font.Font(None, 22).render(item, True, (255, 255, 255))
+            screen.blit(item_txt, (x + 6, y + 38))
+# ==========================================================
+
 #fonction qui assombrit une image
 def darken_image(image, amount=90):
     dark = image.copy()
@@ -49,21 +101,26 @@ class Player:
         self.y = float(y)
 
     def move(self, keys):
-        if keys[pygame.K_q]:
+    # GAUCHE : A (QWERTY) ou Q (AZERTY)
+        if keys[pygame.K_q] or keys[pygame.K_a]:
             self.x -= self.speed
             self.image = self.img_left
+    # DROITE : D (AZERTY & QWERTY)
         if keys[pygame.K_d]:
             self.x += self.speed
             self.image = self.img_right
-        if keys[pygame.K_z]:
+    # HAUT : Z (AZERTY) ou W (QWERTY)
+        if keys[pygame.K_z] or keys[pygame.K_w]:
             self.y -= self.speed
             self.image = self.img_back
+    # BAS : S (AZERTY & QWERTY)
         if keys[pygame.K_s]:
             self.y += self.speed
             self.image = self.img_front
 
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
+
 
         #limites ecran
         if self.rect.left < 0:
@@ -80,6 +137,8 @@ class Player:
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
+
+
 
 # classe pour tous les futurs boutons images
 class ImageButton:
@@ -169,8 +228,9 @@ def menu_screen():
 
 
 def game_screen():
+    global inv_selected, inv_items  # <-- INVENTAIRE
 
-    #bouton retour
+    # bouton retour
     screen_width, screen_height = 800, 600
     retour_img = pygame.image.load("retour.png").convert_alpha()
     retour_img = pygame.transform.scale(retour_img, (80, 40))
@@ -178,14 +238,20 @@ def game_screen():
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
 
-    player = Player(375, 275, 64, 64, speed=0.1, screen_width =800, screen_height=600)
-    run = True
+    player = Player(375, 275, 64, 64, speed=0.4, screen_width=800, screen_height=600)
 
+    run = True
     while run:
         screen.fill(BLACK)
+
         keys = pygame.key.get_pressed()
         player.update(keys)
         player.draw(screen)
+
+        # ------- INVENTAIRE (draw) -------
+        inv_draw(screen, screen_width, screen_height)
+        # --------------------------------
+
         retour_button.draw(screen)
 
         for event in pygame.event.get():
@@ -195,15 +261,28 @@ def game_screen():
 
             if retour_button.is_clicked(event):
                 click_sound.play()
-                return "menu"  # Retour au menu
+                return "menu"
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_l: #appuyer sur L pour tester l'écran de fin
+
+                # ------- INVENTAIRE (1..5) -------
+                if event.key == pygame.K_1: inv_selected = 0
+                if event.key == pygame.K_2: inv_selected = 1
+                if event.key == pygame.K_3: inv_selected = 2
+                if event.key == pygame.K_4: inv_selected = 3
+                if event.key == pygame.K_5: inv_selected = 4
+
+                # (optionnel) T = ajouter un item test
+                if event.key == pygame.K_t:
+                    inv_add("Item")
+                # ---------------------------------
+
+                if event.key == pygame.K_l:
                     click_sound.play()
-                    return "fin"  # GAMEOVER screeen
-  
+                    return "fin"
 
         pygame.display.update()
+
 
 def info_screen():
 
