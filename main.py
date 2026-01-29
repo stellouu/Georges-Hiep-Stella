@@ -1,5 +1,8 @@
-
+from pathlib import Path
 import pygame
+BASE_DIR = Path(__file__).resolve().parent
+VB_DIR = BASE_DIR / "VB"
+
 pygame.init()
 pygame.mixer.init()
 pygame.mixer.music.load("28days_soundtrack.ogg")
@@ -83,44 +86,62 @@ class Player:
         self.speed = speed
         self.screen_width = screen_width
         self.screen_height = screen_height
-        #load sprite
 
-        self.img_front = pygame.image.load("front.png").convert_alpha()
-        self.img_back = pygame.image.load("back.png").convert_alpha()
-        self.img_left = pygame.image.load("left.png").convert_alpha()
-        self.img_right = pygame.image.load("right.png").convert_alpha()
+        # Load and scale frames
+        def load(name):
+            img = pygame.image.load(VB_DIR / name).convert_alpha()
+            return pygame.transform.scale(img, (img.get_width()*scale, img.get_height()*scale))
 
-        self.img_front = pygame.transform.scale(self.img_front, (self.img_front.get_width()*scale, self.img_front.get_height()*scale))
-        self.img_back = pygame.transform.scale(self.img_back, (self.img_back.get_width()*scale, self.img_back.get_height()*scale))
-        self.img_left = pygame.transform.scale(self.img_left, (self.img_left.get_width()*scale, self.img_left.get_height()*scale))
-        self.img_right = pygame.transform.scale(self.img_right, (self.img_right.get_width()*scale, self.img_right.get_height()*scale))
+        self.walk_front = [load("F.png"), load("FLF.png"), load("F.png"), load("FRF.png")]
+        self.walk_back  = [load("B.png"), load("BLF.png"), load("B.png"), load("BRF.png")]
+        self.walk_left  = [load("L.png"), load("LLF.png"), load("L.png"), load("LRF.png")]
+        self.walk_right = [load("R.png"), load("RLF.png"), load("R.png"), load("RRF.png")]
 
-        #perso au debut face a nous
-        self.image = self.img_front
+        # Animation state
+        self.frame_index = 0
+        self.animation_speed = 0.02
+        self.current_anim = self.walk_front
+        self.image = self.walk_front[0]
+
         self.x = float(x)
         self.y = float(y)
 
     def move(self, keys):
-    # GAUCHE : A (QWERTY) ou Q (AZERTY)
+        moving = False
+
         if keys[pygame.K_q] or keys[pygame.K_a]:
             self.x -= self.speed
-            self.image = self.img_left
-    # DROITE : D (AZERTY & QWERTY)
-        if keys[pygame.K_d]:
-            self.x += self.speed
-            self.image = self.img_right
-    # HAUT : Z (AZERTY) ou W (QWERTY)
-        if keys[pygame.K_z] or keys[pygame.K_w]:
-            self.y -= self.speed
-            self.image = self.img_back
-    # BAS : S (AZERTY & QWERTY)
-        if keys[pygame.K_s]:
-            self.y += self.speed
-            self.image = self.img_front
+            self.current_anim = self.walk_left
+            moving = True
 
+        elif keys[pygame.K_d]:
+            self.x += self.speed
+            self.current_anim = self.walk_right
+            moving = True
+
+        elif keys[pygame.K_z] or keys[pygame.K_w]:
+            self.y -= self.speed
+            self.current_anim = self.walk_back
+            moving = True
+
+        elif keys[pygame.K_s]:
+            self.y += self.speed
+            self.current_anim = self.walk_front
+            moving = True
+
+        # Animation update
+        if moving:
+            self.frame_index += self.animation_speed
+            if self.frame_index >= len(self.current_anim):
+                self.frame_index = 0
+            self.image = self.current_anim[int(self.frame_index)]
+        else:
+            self.frame_index = 0
+            self.image = self.current_anim[0]
+
+        # Update rect
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
-
 
         #limites ecran
         if self.rect.left < 0:
@@ -238,7 +259,7 @@ def game_screen():
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
 
-    player = Player(375, 275, 64, 64, speed=0.4, screen_width=800, screen_height=600)
+    player = Player(375, 275, 64, 64, speed=0.75, screen_width=800, screen_height=600)
 
     run = True
     while run:
