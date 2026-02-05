@@ -353,7 +353,7 @@ def info_screen():
     screen_width, screen_height = 800, 600
     retour_img = pygame.image.load("retour.png").convert_alpha()
     retour_img = pygame.transform.scale(retour_img, (80, 40))
-
+# Bouton retour
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
 
@@ -372,7 +372,7 @@ def info_screen():
 
             if retour_button.is_clicked(event):
                 click_sound.play()
-                return "menu"  # Retour au menu # Retour au menu
+                return "menu"  # Retour au menu 
 
         pygame.display.update()
 
@@ -413,7 +413,7 @@ def fin_screen():
             
             if quitter_button.is_clicked(event):
                 pygame.quit()
-                exit()
+                exit()  # Quitter le jeu
                 
             
 
@@ -430,3 +430,4 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
+
