@@ -21,6 +21,21 @@ scale = 3
 
 font = pygame.font.Font(None, 50)
 
+# ================== BARRE DE VIE ==================
+HEALTH_MAX = 100
+HEALTH_DECAY_PER_SEC = 10  # modifie cette valeur pour accélérer/ralentir la perte
+HEALTH_BAR_POS = (10, 10)
+HEALTH_BAR_SIZE = (200, 18)
+
+def draw_health_bar(screen, current, max_value, pos, size):
+    x, y = pos
+    w, h = size
+    ratio = max(0, min(1, current / max_value)) if max_value > 0 else 0
+    fill_w = int(w * ratio)
+    pygame.draw.rect(screen, (40, 40, 40), (x, y, w, h))          # fond
+    pygame.draw.rect(screen, (220, 40, 40), (x, y, fill_w, h))    # vie
+    pygame.draw.rect(screen, (230, 230, 230), (x, y, w, h), 2)    # contour
+
 # ============= FONCTIONS + CLASSES ================ #
 
 # INVENTAIRE (2 cases) (Hiep)
@@ -101,7 +116,7 @@ class Player:
 
         # Animation state
         self.frame_index = 0
-        self.animation_speed = 0.02
+        self.animation_speed = 0.01
         self.current_anim = self.walk_front
         self.image = self.walk_front[0]
 
@@ -191,11 +206,9 @@ class Player:
 # classe pour tous les futurs boutons images
 class ImageButton:
     def __init__(self, image, pos, scale_hover=1.08):
-        # image de base + version assombrie
         self.image = image
         self.image_dark = darken_image(image)
 
-        # position de base
         self.rect = self.image.get_rect(topleft=pos)
 
         # --- images agrandies ---
@@ -212,7 +225,6 @@ class ImageButton:
 
     # fonction pour dessiner le bouton
     def draw(self, screen):
-        # effet hover si la souris est dessus
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             screen.blit(self.image_dark_hover, self.rect_hover)
         else:
@@ -220,7 +232,6 @@ class ImageButton:
 
     # fonction pour vérifier si le bouton est cliqué
     def is_clicked(self, event):
-        # clic gauche dans la zone du bouton
         return (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
@@ -228,14 +239,14 @@ class ImageButton:
         )
 
 
-# ECRAN MENU
+#ECRAN MENU
 
 state = "menu"
 
 def menu_screen():
 
     
-    # SECTION BOUTON JEU
+    #SECTION BOUTON JEU
 
         # --- Bouton JOUER ---
     play_img = pygame.image.load("JOUER_bouton.png").convert_alpha()
@@ -254,11 +265,9 @@ def menu_screen():
 
     run = True
     while run:
-        # fond du menu
         background = pygame.image.load("menu.png").convert()
         screen.blit(background, (0, 0))
 
-        # affichage des boutons
         play_button.draw(screen)
         info_button.draw(screen)
         
@@ -289,10 +298,8 @@ def game_screen():
     retour_img = pygame.image.load("retour.png").convert_alpha()
     retour_img = pygame.transform.scale(retour_img, (80, 40))
 
-    # fond du niveau
     background_img = pygame.image.load("game_bg.png").convert()
 
-    # obstacles (décor)
     lit_img = pygame.image.load("lit.png").convert_alpha()
     lit_img = pygame.transform.scale(lit_img, (lit_img.get_width()*0.5, lit_img.get_height()*0.5))
     lit_rect = lit_img.get_rect(topleft=(20, 55))
@@ -303,23 +310,29 @@ def game_screen():
 
     obstacles = [lit_rect, table_rect]
 
-    # bouton retour (UI)
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
    
 
-    # joueur
-    player = Player(375, 275, 64, 64, speed=0.75, screen_width=800, screen_height=600)
+    player = Player(375, 275, 64, 64, speed=2.0, screen_width=800, screen_height=600)
+    player_health = HEALTH_MAX
+
+    clock = pygame.time.Clock()
 
     run = True
     while run:
-        # fond + éléments de décor
+        dt = clock.tick(60) / 1000.0
+
+        # diminution progressive de la vie
+        player_health = max(0, player_health - HEALTH_DECAY_PER_SEC * dt)
+        if player_health <= 0:
+            return "fin"
+
         screen.blit(background_img, (0, 0))
  
         screen.blit(lit_img, lit_rect)
         screen.blit(table_img, table_rect)
     
-        # mouvement + rendu du joueur
         keys = pygame.key.get_pressed()
         player.update(keys, obstacles)
         player.draw(screen)
@@ -328,7 +341,9 @@ def game_screen():
         inv_draw(screen, screen_width, screen_height)
         # --------------------------------
 
-        # bouton retour
+        # barre de vie en haut à gauche
+        draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE)
+
         retour_button.draw(screen)
 
         for event in pygame.event.get():
@@ -359,7 +374,6 @@ def game_screen():
                     return "fin"
 
         pygame.display.update()
-
 
 
 def info_screen():
@@ -444,5 +458,4 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
-
 
