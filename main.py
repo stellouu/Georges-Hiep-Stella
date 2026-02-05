@@ -1,7 +1,9 @@
 from pathlib import Path
 import pygame
 BASE_DIR = Path(__file__).resolve().parent
-VB_DIR = BASE_DIR / "VB"
+VB_DIR = BASE_DIR / "VB" #dossier des sprites du joueur :D (VB = "Victor Blackwell", le nom du personnage principal)
+
+# ============= PARAMETRES GLOBAUX ============= #
 
 pygame.init()
 pygame.mixer.init()
@@ -9,32 +11,36 @@ pygame.mixer.music.load("28days_soundtrack.ogg")
 pygame.mixer.music.set_volume(1.0)
 pygame.mixer.music.play(-1) #musique de fond en boucle
 click_sound = pygame.mixer.Sound("click_sound.ogg")
-click_sound.set_volume(0.5) #clic sonore
+click_sound.set_volume(1) #clic sonore
 
 
 screen = pygame.display.set_mode((800, 600))
 pygame.display.set_caption("menu + jeu + info")
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
 scale = 3
 
 font = pygame.font.Font(None, 50)
 
-# ================== INVENTAIRE (5 cases) ==================
-INV_SLOTS = 5
+# ============= FONCTIONS + CLASSES ================ #
+
+# INVENTAIRE (2 cases) (Hiep)
+
+INV_SLOTS = 2
 inv_selected = 0
 inv_items = [None] * INV_SLOTS  # ex: ["Key", "Med", None, None, "Badge"]
 
+#-------- fonction pour ajouter un item dans l'inventaire --------
+
 def inv_add(item_name):
-    """Ajoute l'objet dans la première case vide. Retourne True si OK."""
+    """Ajoute l'objet dans la première case vide, return True si OK."""
     global inv_items
     for i in range(INV_SLOTS):
         if inv_items[i] is None:
             inv_items[i] = item_name
             return True
     return False
+
+#-------- dessine l'inventaire dans le jeu --------
 
 def inv_draw(screen, w, h):
     global inv_selected, inv_items
@@ -46,7 +52,7 @@ def inv_draw(screen, w, h):
     start_x = (w - total_w) // 2
     start_y = h - bar_h + (bar_h - slot_h) // 2
 
-
+#-------- inventory slots --------
 
     for i in range(INV_SLOTS):
         x = start_x + i * (slot_w + gap)
@@ -54,45 +60,41 @@ def inv_draw(screen, w, h):
         rect = pygame.Rect(x, y, slot_w, slot_h)
 
         # FOND OPAQUE (cache le jeu derrière)
-        pygame.draw.rect(screen, (0, 0, 0), rect)
+        pygame.draw.rect(screen, (0, 0, 0, 180), rect)
 
 
-        # contour
+        # contour dde la case (plus épais si sélectionnée)
         if i == inv_selected:
             pygame.draw.rect(screen, (230, 230, 230), rect, 3)
         else:
             pygame.draw.rect(screen, (120, 120, 120), rect, 2)
 
-        # numéro 1..5
-        num = pygame.font.Font(None, 26).render(str(i + 1), True, (220, 220, 220))
-        screen.blit(num, (x + 4, y + 2))
-
-        # item (texte)
-        item = inv_items[i]
-        if item is not None:
-            item_txt = pygame.font.Font(None, 22).render(item, True, (255, 255, 255))
-            screen.blit(item_txt, (x + 6, y + 38))
 # ==========================================================
 
-#fonction qui assombrit une image
+# ---------- fonction qui assombrit une image ----------
+
 def darken_image(image, amount=90):
     dark = image.copy()
     dark.fill((amount, amount, amount), special_flags=pygame.BLEND_RGB_SUB) #malgré alpha qd mm mettre RBG pas RGBA
     return dark
 
+# ---------- class (= blueprint) du joueur ----------
+
 class Player:
-    def __init__(self, x, y, width, height, speed, screen_width, screen_height):
+    def __init__(self, x, y, width, height, speed, screen_width, screen_height): #pour les limites de l'écran
         self.rect = pygame.Rect(x, y, width, height)
         self.speed = speed
         self.screen_width = screen_width
         self.screen_height = screen_height
 
         # Load and scale frames
+
         def load(name):
             img = pygame.image.load(VB_DIR / name).convert_alpha()
-            return pygame.transform.scale(img, (img.get_width()*scale, img.get_height()*scale))
+            return pygame.transform.scale(img, (img.get_width()*2, img.get_height()*2))
 
-        self.walk_front = [load("F.png"), load("FLF.png"), load("F.png"), load("FRF.png")]
+        # Animations (4 images pour chaque direction)
+        self.walk_front = [load("F.png"), load("FLF.png"), load("F.png"), load("FRF.png")] #F = front, L = left, R = right, B = back, LF = left foot, RF = right foot
         self.walk_back  = [load("B.png"), load("BLF.png"), load("B.png"), load("BRF.png")]
         self.walk_left  = [load("L.png"), load("LLF.png"), load("L.png"), load("LRF.png")]
         self.walk_right = [load("R.png"), load("RLF.png"), load("R.png"), load("RRF.png")]
@@ -106,28 +108,45 @@ class Player:
         self.x = float(x)
         self.y = float(y)
 
-    def move(self, keys):
+    def move(self, keys, obstacles):
         moving = False
+        old_x = self.x #au cas ou il y a une collision, on garde la position avant le mouvement!!
+        old_y = self.y
+
+        # Mouvements avec les touches (Q/A = gauche, D = droite, Z/W = haut, S = bas, pour AZERTY et QWERTY)
 
         if keys[pygame.K_q] or keys[pygame.K_a]:
             self.x -= self.speed
             self.current_anim = self.walk_left
             moving = True
-
         elif keys[pygame.K_d]:
             self.x += self.speed
             self.current_anim = self.walk_right
             moving = True
-
         elif keys[pygame.K_z] or keys[pygame.K_w]:
             self.y -= self.speed
             self.current_anim = self.walk_back
             moving = True
-
         elif keys[pygame.K_s]:
             self.y += self.speed
             self.current_anim = self.walk_front
             moving = True
+
+        # Update rect temporarily
+
+        self.rect.x = int(self.x)
+        self.rect.y = int(self.y)
+
+        # Check collision after movement
+
+        if self.collision(obstacles):
+
+            # repousser le joueur à sa position avant le mouvement
+
+            self.x = old_x #on le remet à old x/y, comme ecrit avant. 
+            self.y = old_y
+            self.rect.x = int(self.x)
+            self.rect.y = int(self.y)
 
         # Animation update
         if moving:
@@ -139,29 +158,35 @@ class Player:
             self.frame_index = 0
             self.image = self.current_anim[0]
 
-        # Update rect
-        self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
+        # Screen limits (after collision check)
 
-        #limites ecran
         if self.rect.left < 0:
             self.rect.left = 0
+            self.x = self.rect.x
         if self.rect.right > self.screen_width:
-            self.rect.right = self.screen_width
+            self.rect.right = self.screen_width   #limies de l'écran pour le joueur
+            self.x = self.rect.x
         if self.rect.top < 0:
             self.rect.top = 0
+            self.y = self.rect.y
         if self.rect.bottom > self.screen_height:
             self.rect.bottom = self.screen_height
+            self.y = self.rect.y
 
-    def update(self, keys):
-        self.move(keys)
+    def update(self, keys, obstacles):
+        self.move(keys, obstacles)
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
-
+    def collision(self, obstacles):
+        for obj in obstacles:
+            if self.rect.colliderect(obj):
+                return True
+        return False
 
 # classe pour tous les futurs boutons images
+
 class ImageButton:
     def __init__(self, image, pos, scale_hover=1.08):
         self.image = image
@@ -387,3 +412,4 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
+
