@@ -185,16 +185,15 @@ class Player:
                 return True
         return False
 
-# classe pour tous les futurs boutons images
 
-# classe pour tous les boutons images 
+
+
+# classe pour tous les futurs boutons images
 class ImageButton:
     def __init__(self, image, pos, scale_hover=1.08):
-        # image de base + version assombrie
         self.image = image
         self.image_dark = darken_image(image)
 
-        # zone de collision
         self.rect = self.image.get_rect(topleft=pos)
 
         # --- images agrandies ---
@@ -211,7 +210,6 @@ class ImageButton:
 
     # fonction pour dessiner le bouton
     def draw(self, screen):
-        # applique l'effet hover si la souris est dessus
         if self.rect.collidepoint(pygame.mouse.get_pos()):
             screen.blit(self.image_dark_hover, self.rect_hover)
         else:
@@ -219,7 +217,6 @@ class ImageButton:
 
     # fonction pour vérifier si le bouton est cliqué
     def is_clicked(self, event):
-        # clic gauche dans la zone du bouton
         return (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
@@ -227,14 +224,14 @@ class ImageButton:
         )
 
 
-# ECRAN MENU
+#ECRAN MENU
 
 state = "menu"
 
 def menu_screen():
 
     
-    # SECTION BOUTON JEU
+    #SECTION BOUTON JEU
 
         # --- Bouton JOUER ---
     play_img = pygame.image.load("JOUER_bouton.png").convert_alpha()
@@ -253,11 +250,9 @@ def menu_screen():
 
     run = True
     while run:
-        # fond du menu
         background = pygame.image.load("menu.png").convert()
         screen.blit(background, (0, 0))
 
-        # dessin des boutons
         play_button.draw(screen)
         info_button.draw(screen)
         
@@ -288,27 +283,39 @@ def game_screen():
     retour_img = pygame.image.load("retour.png").convert_alpha()
     retour_img = pygame.transform.scale(retour_img, (80, 40))
 
+    background_img = pygame.image.load("game_bg.png").convert()
+
+    lit_img = pygame.image.load("lit.png").convert_alpha()
+    lit_img = pygame.transform.scale(lit_img, (lit_img.get_width()*0.5, lit_img.get_height()*0.5))
+    lit_rect = lit_img.get_rect(topleft=(20, 55))
+
+    table_img = pygame.image.load("table.png").convert_alpha()
+    table_img = pygame.transform.scale(table_img, (table_img.get_width()*0.5, table_img.get_height()*0.45)) 
+    table_rect = table_img.get_rect(topleft=(30, 350))
+
+    obstacles = [lit_rect, table_rect]
+
     retour_rect = retour_img.get_rect(topright=(screen_width - 10, 10))
     retour_button = ImageButton(retour_img, retour_rect.topleft)
+   
 
-    # joueur
     player = Player(375, 275, 64, 64, speed=0.75, screen_width=800, screen_height=600)
 
     run = True
     while run:
-        # fond du jeu
-        screen.fill(BLACK)
-
-        # mouvement + rendu du joueur
+        screen.blit(background_img, (0, 0))
+ 
+        screen.blit(lit_img, lit_rect)
+        screen.blit(table_img, table_rect)
+    
         keys = pygame.key.get_pressed()
-        player.update(keys)
+        player.update(keys, obstacles)
         player.draw(screen)
 
         # ------- INVENTAIRE (draw) -------
         inv_draw(screen, screen_width, screen_height)
         # --------------------------------
 
-        # bouton retour en haut à droite
         retour_button.draw(screen)
 
         for event in pygame.event.get():
@@ -339,6 +346,7 @@ def game_screen():
                     return "fin"
 
         pygame.display.update()
+
 
 def info_screen():
 
@@ -407,6 +415,8 @@ def fin_screen():
                 pygame.quit()
                 exit()
                 
+            
+
         pygame.display.update()
 
 
@@ -420,5 +430,3 @@ while True:
             state = info_screen()
     elif state == "fin":
             state = fin_screen()
-
-
