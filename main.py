@@ -414,7 +414,12 @@ def game_screen(screen, assets, font):
     )
 
     player_health = HEALTH_MAX
+    
     clock = pygame.time.Clock()
+
+    
+    darkness_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
