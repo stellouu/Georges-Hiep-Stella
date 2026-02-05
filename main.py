@@ -22,6 +22,7 @@ HEALTH_MAX = 100
 HEALTH_DECAY_PER_SEC = 10  # hiep quand tu fais les ennemis modifie cette valeur pour accélérer/ralentir la perte
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
+MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
 
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
@@ -259,8 +260,8 @@ def load_image(path, size=None, alpha=True):
 
 def load_player_sprites(scale=2):
     """Charge et scale les sprites du joueur."""
-    def load(name):
-        img = pygame.image.load(VB_DIR / name).convert_alpha()
+    def load(Victor):
+        img = pygame.image.load(VB_DIR / Victor).convert_alpha()
         return pygame.transform.scale(img, (img.get_width() * scale, img.get_height() * scale))
     return {
         "walk_front": [load("F.png"), load("FLF.png"), load("F.png"), load("FRF.png")],
@@ -294,7 +295,7 @@ def load_assets():
     assets["table"] = pygame.transform.scale(table, (int(table.get_width() * 0.5), int(table.get_height() * 0.45)))
 
     # --- Joueur ---
-    assets["player_sprites"] = load_player_sprites(scale=2)
+    assets["player_sprites"] = load_player_sprites(scale=2.5)
 
     # --- Audio ---
     pygame.mixer.music.load(str(AUDIO_DIR / "28days_soundtrack.ogg"))
@@ -302,7 +303,10 @@ def load_assets():
     pygame.mixer.music.play(-1)  # musique de fond en boucle
 
     assets["click_sound"] = pygame.mixer.Sound(str(AUDIO_DIR / "click_sound.ogg"))
-    assets["click_sound"].set_volume(1.0)
+    assets["click_sound"].set_volume(0.2)
+
+    assets["heal"] = pygame.mixer.Sound(str(AUDIO_DIR / "heal.ogg"))
+    assets["heal"].set_volume(0.2)
 
     return assets
 
@@ -443,21 +447,24 @@ def game_screen(screen, assets, font):
                 assets["click_sound"].play()
                 return "menu"
 
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if table_rect.collidepoint(event.pos):
+                    assets["heal"].play()
+                    player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
+
             if event.type == pygame.KEYDOWN:
-                # INVENTAIRE (2 slots -> touches 1 et 2 uniquement)
                 if event.key == pygame.K_1:
                     inv_selected = 0
                 elif event.key == pygame.K_2:
                     inv_selected = 1
 
-                # A GARDER (mm si optionnel) POUR TESTER LES ARMES / NOUVEAUX OBJ DANS L INV
                 if event.key == pygame.K_t:
                     inv_add("Item")
 
-                # debug fin
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
                     return "fin"
+
 
         pygame.display.update()
 
