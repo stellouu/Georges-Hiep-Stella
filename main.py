@@ -16,10 +16,14 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 FPS = 60
 
 FONT_SIZE = 50
+PLAYER_SIZE = (64, 64)
+ZOMBIE_SCALE = 1.8  # taille du zombie (1.0 = taille du joueur)
 
 # ================== BARRE DE VIE =========
 HEALTH_MAX = 100
-HEALTH_DECAY_PER_SEC = 10  # hiep quand tu fais les ennemis modifie cette valeur pour accélérer/ralentir la perte
+HEALTH_DECAY_PER_SEC = 0.7  # hiep quand tu fais les ennemis modifie cette valeur pour accélérer/ralentir la perte
+ZOMBIE_DAMAGE_PER_SEC = 25  # dégâts par seconde si collision avec le zombie
+HEALTH_FLASH_DURATION = 0.18  # durée du flash quand on perd de la vie (sec)
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
 MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
@@ -34,16 +38,27 @@ inv_items = [None] * INV_SLOTS #pour les objets dans l'inv
 # pour UI (user interface)
 # =========================
 
-def draw_health_bar(screen, current, max_value, pos, size):
-    """Dessine une barre de vie simple (fond + vie + contour)."""
+def draw_health_bar(screen, current, max_value, pos, size, flash=0.0):
+    """Dessine une barre de vie simple (fond + vie + contour).
+    flash: 0..1 -> effet visuel lors d'une perte de vie.
+    """
     x, y = pos
     w, h = size
     ratio = max(0, min(1, current / max_value)) if max_value > 0 else 0
     fill_w = int(w * ratio)
 
     pygame.draw.rect(screen, (40, 40, 40), (x, y, w, h))          # fond
-    pygame.draw.rect(screen, (220, 40, 40), (x, y, fill_w, h))    # vie
+    # couleur de la vie + flash si dégâts
+    if flash > 0:
+        intensity = min(255, 40 + int(160 * flash))
+        bar_color = (255, intensity, intensity)
+    else:
+        bar_color = (220, 40, 40)
+    pygame.draw.rect(screen, bar_color, (x, y, fill_w, h))        # vie
     pygame.draw.rect(screen, (230, 230, 230), (x, y, w, h), 2)    # contour
+    if flash > 0:
+        # surbrillance autour de la barre
+        pygame.draw.rect(screen, (255, 220, 120), (x - 2, y - 2, w + 4, h + 4), 2)
 
 
 def darken_image(image, amount=90):
@@ -245,6 +260,67 @@ class ImageButton:
         )
 
 
+class Zombie:
+    """Zombie qui suit le joueur (mouvement plus naturel avec inertie)."""
+
+    def __init__(self, x, y, image, speed, screen_width, screen_height):
+        # image + hitbox
+        self.image = image
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.speed = speed
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+        # positions float pour un mouvement fluide
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.vx = 0.0
+        self.vy = 0.0
+
+    def update(self, target_rect, dt):
+        # direction vers le joueur
+        dx = target_rect.centerx - self.rect.centerx
+        dy = target_rect.centery - self.rect.centery
+        dist = (dx * dx + dy * dy) ** 0.5
+        follow_distance = 40  # distance à laquelle le zombie s'arrête
+
+        if dist > follow_distance:
+            # vitesse désirée vers le joueur
+            desired_vx = (dx / dist) * self.speed
+            desired_vy = (dy / dist) * self.speed
+        else:
+            # on s'arrête si trop proche
+            desired_vx = 0.0
+            desired_vy = 0.0
+
+        # inertie légère pour un mouvement plus naturel (évite l'effet "vol")
+        accel = 6.0
+        self.vx += (desired_vx - self.vx) * min(1.0, accel * dt)
+        self.vy += (desired_vy - self.vy) * min(1.0, accel * dt)
+
+        self.x += self.vx
+        self.y += self.vy
+
+        self.rect.x = int(self.x)
+        self.rect.y = int(self.y)
+
+        if self.rect.left < 0:
+            self.rect.left = 0
+            self.x = self.rect.x
+        if self.rect.right > self.screen_width:
+            self.rect.right = self.screen_width
+            self.x = self.rect.x
+        if self.rect.top < 0:
+            self.rect.top = 0
+            self.y = self.rect.y
+        if self.rect.bottom > self.screen_height:
+            self.rect.bottom = self.screen_height
+            self.y = self.rect.y
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+
 # =========================
 # Chargement assets
 # =========================
@@ -296,6 +372,14 @@ def load_assets():
 
     # --- Joueur ---
     assets["player_sprites"] = load_player_sprites(scale=2.5)
+
+    # --- Zombie ---
+    # --- Zombie (sprite unique) ---
+    zombie_size = (
+        int(PLAYER_SIZE[0] * ZOMBIE_SCALE),
+        int(PLAYER_SIZE[1] * ZOMBIE_SCALE),
+    )
+    assets["zombie"] = load_image(BASE_DIR / "zombie.png", size=zombie_size)
 
     # --- Audio ---
     pygame.mixer.music.load(str(AUDIO_DIR / "28days_soundtrack.ogg"))
@@ -407,13 +491,24 @@ def game_screen(screen, assets, font):
 
     # Joueur (NE PAS CHANGER LA VITESSE -> 2.0 comme dans ton code final)
     player = Player(
-        x=375, y=275, width=64, height=64,
+        x=375, y=275, width=PLAYER_SIZE[0], height=PLAYER_SIZE[1],
         speed=4.0,
         screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
         sprites=assets["player_sprites"]
     )
 
+    # ZOMBIE: spawn + vitesse (plus bas = plus lent)
+    zombie = Zombie(
+        x=100, y=100,
+        image=assets["zombie"],
+        speed=1.8,
+        screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT
+    )
+
     player_health = HEALTH_MAX
+    # animation de perte de vie
+    health_flash = 0.0
+    damage_accum = 0.0  # cumul des pertes pour déclencher le flash
     
     clock = pygame.time.Clock()
 
@@ -424,7 +519,7 @@ def game_screen(screen, assets, font):
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
 
-        # diminution de la vie
+        # diminution de la vie (decay)
         player_health = max(0, player_health - HEALTH_DECAY_PER_SEC * dt)
         if player_health <= 0:
             return "fin"
@@ -438,9 +533,27 @@ def game_screen(screen, assets, font):
         player.update(keys, obstacles)
         player.draw(screen)
 
+        # update zombie (suit le joueur)
+        zombie.update(player.rect, dt)
+        zombie.draw(screen)
+
+        # dégâts de collision zombie (perte continue tant qu'il touche)
+        zombie_damage = 0.0
+        if zombie.rect.colliderect(player.rect):
+            zombie_damage = ZOMBIE_DAMAGE_PER_SEC * dt
+            player_health = max(0, player_health - zombie_damage)
+
+        # déclenche l'animation seulement si la perte vient du zombie
+        if zombie_damage > 0:
+            damage_accum += zombie_damage
+        if damage_accum >= 1.0:  # augmente ce seuil si le flash est trop fréquent
+            health_flash = HEALTH_FLASH_DURATION
+            damage_accum = 0.0
+        health_flash = max(0.0, health_flash - dt)
+
         # UI
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
-        draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE)
+        draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE, flash=health_flash)
 
         retour_button.draw(screen)
 
