@@ -492,6 +492,12 @@ def game_screen(screen, assets, font):
     lit_rect2 = assets["lit"].get_rect(topleft=(500, 80))
     table_rect2 = assets["table"].get_rect(topleft=(400, 400))
 
+    lit_rect3 = assets["lit"].get_rect(topleft=(600, 80))
+    table_rect3 = assets["table"].get_rect(topleft=(500, 550))
+
+    lit_rect4 = assets["lit"].get_rect(topleft=(20, 60))
+    table_rect4 = assets["table"].get_rect(topleft=(30, 350))
+
 
     # Joueur (NE PAS CHANGER LA VITESSE -> 2.0 comme dans ton code final)
     player = Player(
@@ -543,11 +549,26 @@ def game_screen(screen, assets, font):
             screen.blit(assets["table"], table_rect2)
             obstacles = [lit_rect2, table_rect2]
         
+        elif current_room == 3:
+            screen.blit(assets["lit"], lit_rect3)
+            screen.blit(assets["table"], table_rect3)
+            obstacles = [lit_rect3, table_rect3]
+
+        elif current_room == 4:
+            screen.blit(assets["lit"], lit_rect4)
+            screen.blit(assets["table"], table_rect4)
+            obstacles = [lit_rect4, table_rect4]
+        
         # Vérification obstacles de la salle
         if current_room == 1:
             obstacles = [lit_rect, table_rect]
         elif current_room == 2:
             obstacles = [lit_rect2, table_rect2]
+        elif current_room == 3:
+            obstacles = [lit_rect3, table_rect3]
+        elif current_room == 4:
+            obstacles = [lit_rect4, table_rect4]
+        
 
 
         # update joueur
@@ -556,11 +577,15 @@ def game_screen(screen, assets, font):
         player.draw(screen)
 
         # ----- PARAMÈTRES PORTE -----
-        door_height = 120  # hauteur de la zone de passage
-        door_center_y = SCREEN_HEIGHT // 2
+        door_size = 120
 
-        door_top = door_center_y - door_height // 2
-        door_bottom = door_center_y + door_height // 2
+        # portes verticales (droite/gauche)
+        door_top = SCREEN_HEIGHT // 2 - door_size // 2
+        door_bottom = SCREEN_HEIGHT // 2 + door_size // 2
+
+        # portes horizontales (haut/bas)
+        door_left = SCREEN_WIDTH // 2 - door_size // 2
+        door_right = SCREEN_WIDTH // 2 + door_size // 2
 
 
         # Aller salle 2 (bord droit + zone centrale)
@@ -573,6 +598,7 @@ def game_screen(screen, assets, font):
             player.x = player.rect.x
 
 
+
         # Retour salle 1 (bord gauche + zone centrale)
         if (current_room == 2
             and player.rect.left <= 0
@@ -580,6 +606,44 @@ def game_screen(screen, assets, font):
 
             current_room = 1
             player.rect.right = SCREEN_WIDTH - 5
+            player.x = player.rect.x
+
+        # Aller salle 3 (bord du bas + zone centrale)
+        if (current_room == 2
+            and player.rect.bottom >= SCREEN_HEIGHT
+            and door_left <= player.rect.centerx <= door_right):
+
+            current_room = 3
+            player.rect.top = 5
+            player.y = player.rect.y
+
+        # Retour salle 2 (bord du haut + zone centrale)
+        if (current_room == 3
+            and player.rect.top <= 0
+            and door_left <= player.rect.centerx <= door_right):
+
+            current_room = 2
+            player.rect.bottom = SCREEN_HEIGHT - 5
+            player.y = player.rect.y
+
+
+        # Aller salle 4 (bord gauche + zone centrale)
+        if (current_room == 3
+            and player.rect.left <= 0
+            and door_top <= player.rect.centery <= door_bottom):
+
+            current_room = 4
+            player.rect.right = SCREEN_WIDTH - 5
+            player.x = player.rect.x
+
+
+        # Retour salle 3 (bord droit + zone centrale)
+        if (current_room == 4
+            and player.rect.right >= SCREEN_WIDTH
+            and door_top <= player.rect.centery <= door_bottom):
+
+            current_room = 3
+            player.rect.left = 5
             player.x = player.rect.x
 
         
@@ -661,4 +725,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
