@@ -375,11 +375,11 @@ def load_assets():
 
     # --- Zombie ---
     # --- Zombie (sprite unique) ---
-    zombie_size = (
-        int(PLAYER_SIZE[0] * ZOMBIE_SCALE),
-        int(PLAYER_SIZE[1] * ZOMBIE_SCALE),
-    )
-    assets["zombie"] = load_image(BASE_DIR / "zombie.png", size=zombie_size)
+#    zombie_size = (
+#        int(PLAYER_SIZE[0] * ZOMBIE_SCALE),
+#        int(PLAYER_SIZE[1] * ZOMBIE_SCALE),
+#    )
+#    assets["zombie"] = load_image(BASE_DIR / "zombie.png", size=zombie_size)
 
     # --- Audio ---
     pygame.mixer.music.load(str(AUDIO_DIR / "28days_soundtrack.ogg"))
@@ -489,6 +489,10 @@ def game_screen(screen, assets, font):
     table_rect = assets["table"].get_rect(topleft=(30, 350))
     obstacles = [lit_rect, table_rect]
 
+    lit_rect2 = assets["lit"].get_rect(topleft=(500, 80))
+    table_rect2 = assets["table"].get_rect(topleft=(400, 400))
+
+
     # Joueur (NE PAS CHANGER LA VITESSE -> 2.0 comme dans ton code final)
     player = Player(
         x=375, y=275, width=PLAYER_SIZE[0], height=PLAYER_SIZE[1],
@@ -498,17 +502,21 @@ def game_screen(screen, assets, font):
     )
 
     # ZOMBIE: spawn + vitesse (plus bas = plus lent)
-    zombie = Zombie(
-        x=100, y=100,
-        image=assets["zombie"],
-        speed=1.8,
-        screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT
-    )
+#    zombie = Zombie(
+#        x=100, y=100,
+#        image=assets["zombie"],
+#        speed=1.8,
+#        screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT
+#    )
 
     player_health = HEALTH_MAX
     # animation de perte de vie
     health_flash = 0.0
     damage_accum = 0.0  # cumul des pertes pour déclencher le flash
+
+    # Salle actuelle du joueur:
+    current_room = 1
+    
     
     clock = pygame.time.Clock()
 
@@ -525,31 +533,61 @@ def game_screen(screen, assets, font):
             return "fin"
 
         screen.blit(assets["game_bg"], (0, 0))
-        screen.blit(assets["lit"], lit_rect)
-        screen.blit(assets["table"], table_rect)
+        if current_room == 1:
+            screen.blit(assets["lit"], lit_rect)
+            screen.blit(assets["table"], table_rect)
+            obstacles = [lit_rect, table_rect]
+
+        elif current_room == 2:
+            screen.blit(assets["lit"], lit_rect2)
+            screen.blit(assets["table"], table_rect2)
+            obstacles = [lit_rect2, table_rect2]
+        
+        # Vérification obstacles de la salle
+        if current_room == 1:
+            obstacles = [lit_rect, table_rect]
+        elif current_room == 2:
+            obstacles = [lit_rect2, table_rect2]
+
 
         # update joueur
         keys = pygame.key.get_pressed()
         player.update(keys, obstacles)
         player.draw(screen)
 
-        # update zombie (suit le joueur)
-        zombie.update(player.rect, dt)
-        zombie.draw(screen)
+        # ----- PARAMÈTRES PORTE -----
+        door_height = 120  # hauteur de la zone de passage
+        door_center_y = SCREEN_HEIGHT // 2
 
-        # dégâts de collision zombie (perte continue tant qu'il touche)
-        zombie_damage = 0.0
-        if zombie.rect.colliderect(player.rect):
-            zombie_damage = ZOMBIE_DAMAGE_PER_SEC * dt
-            player_health = max(0, player_health - zombie_damage)
+        door_top = door_center_y - door_height // 2
+        door_bottom = door_center_y + door_height // 2
 
-        # déclenche l'animation seulement si la perte vient du zombie
-        if zombie_damage > 0:
-            damage_accum += zombie_damage
-        if damage_accum >= 1.0:  # augmente ce seuil si le flash est trop fréquent
-            health_flash = HEALTH_FLASH_DURATION
-            damage_accum = 0.0
-        health_flash = max(0.0, health_flash - dt)
+
+        # Aller salle 2 (bord droit + zone centrale)
+        if (current_room == 1
+            and player.rect.right >= SCREEN_WIDTH
+            and door_top <= player.rect.centery <= door_bottom):
+
+            current_room = 2
+            player.rect.left = 5
+            player.x = player.rect.x
+
+
+        # Retour salle 1 (bord gauche + zone centrale)
+        if (current_room == 2
+            and player.rect.left <= 0
+            and door_top <= player.rect.centery <= door_bottom):
+
+            current_room = 1
+            player.rect.right = SCREEN_WIDTH - 5
+            player.x = player.rect.x
+
+        
+
+
+
+
+
 
         # UI
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
@@ -623,3 +661,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
