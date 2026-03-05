@@ -23,6 +23,7 @@ HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
 MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
+TABLE_HEAL_HITBOX_INFLATE = 100
 
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
@@ -37,7 +38,7 @@ JOURNAL_READ_RADIUS = 60
 JOURNAL_POS = (560, 280)
 JOURNAL_BOX_POS = (70, 430)
 JOURNAL_BOX_SIZE = (SCREEN_WIDTH - 140, 120) 
-JOURNAL_SIZE = (64, 48) # taille du sprite du journal dans la salle 2
+JOURNAL_SIZE = (100, 100) # taille du sprite du journal dans la salle 2
 
 
 # =========================
@@ -608,7 +609,9 @@ def game_screen(screen, assets, font):
                 if (
                     current_room == 1
                     and room1_table_rect.collidepoint(event.pos)
-                    and player.rect.colliderect(room1_table_rect.inflate(12, 12))
+                    and player.rect.colliderect(
+                        room1_table_rect.inflate(TABLE_HEAL_HITBOX_INFLATE, TABLE_HEAL_HITBOX_INFLATE)
+                    )
                 ):
                     assets["heal"].play()
                     player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
