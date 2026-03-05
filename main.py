@@ -16,14 +16,10 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 FPS = 60
 
 FONT_SIZE = 50
-PLAYER_SIZE = (64, 64)
-ZOMBIE_SCALE = 1.8  # taille du zombie (1.0 = taille du joueur)
 
 # ================== BARRE DE VIE =========
 HEALTH_MAX = 100
-HEALTH_DECAY_PER_SEC = 0.7  # hiep quand tu fais les ennemis modifie cette valeur pour accélérer/ralentir la perte
-ZOMBIE_DAMAGE_PER_SEC = 25  # dégâts par seconde si collision avec le zombie
-HEALTH_FLASH_DURATION = 0.18  # durée du flash quand on perd de la vie (sec)
+HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
 MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
@@ -31,34 +27,37 @@ MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
 inv_selected = 0
-inv_items = [None] * INV_SLOTS #pour les objets dans l'inv
+inv_items = [None] * INV_SLOTS  # pour les objets dans l'inv
+
+# ================== PICKUPS =========
+PICKUP_KEY = pygame.K_e
+PICKUP_RADIUS = 40
 
 
 # =========================
 # pour UI (user interface)
 # =========================
 
-def draw_health_bar(screen, current, max_value, pos, size, flash=0.0):
-    """Dessine une barre de vie simple (fond + vie + contour).
-    flash: 0..1 -> effet visuel lors d'une perte de vie.
-    """
+def draw_health_bar(screen, current, max_value, pos, size):
+    """Dessine une barre de vie simple (fond + vie + contour)."""
     x, y = pos
     w, h = size
     ratio = max(0, min(1, current / max_value)) if max_value > 0 else 0
     fill_w = int(w * ratio)
 
     pygame.draw.rect(screen, (40, 40, 40), (x, y, w, h))          # fond
-    # couleur de la vie + flash si dégâts
-    if flash > 0:
-        intensity = min(255, 40 + int(160 * flash))
-        bar_color = (255, intensity, intensity)
-    else:
-        bar_color = (220, 40, 40)
-    pygame.draw.rect(screen, bar_color, (x, y, fill_w, h))        # vie
+    pygame.draw.rect(screen, (220, 40, 40), (x, y, fill_w, h))    # vie
     pygame.draw.rect(screen, (230, 230, 230), (x, y, w, h), 2)    # contour
-    if flash > 0:
-        # surbrillance autour de la barre
-        pygame.draw.rect(screen, (255, 220, 120), (x - 2, y - 2, w + 4, h + 4), 2)
+
+
+def draw_prompt(screen, font, text, x, y):  # affiche un texte avec un fond semi-transparent
+    """"Affiche un texte avec un fond semi-transparent"""
+    label = font.render(text, True, (230, 230, 230))
+    bg = pygame.Surface((label.get_width() + 12, label.get_height() + 8))
+    bg.set_alpha(160)
+    bg.fill((0, 0, 0))
+    screen.blit(bg, (x, y))
+    screen.blit(label, (x + 6, y + 4))
 
 
 def darken_image(image, amount=90):
@@ -103,16 +102,16 @@ def inv_draw(screen, w, h, font):
         y = start_y
         rect = pygame.Rect(x, y, slot_w, slot_h)
 
-        #FOND OPAQUE (cache le jeu derrière)
+        # FOND OPAQUE (cache le jeu derrière)
         pygame.draw.rect(screen, (0, 0, 0), rect)
 
-        #contour de la case (plus épais si sélectionnée)
+        # contour de la case (plus épais si sélectionnée)
         if i == inv_selected:
             pygame.draw.rect(screen, (230, 230, 230), rect, 3)
         else:
             pygame.draw.rect(screen, (120, 120, 120), rect, 2)
 
-        #Afficher le texte de l'item (si présent)
+        # Afficher le texte de l'item (si présent)
         item = inv_items[i]
         if item:
             label = font.render(str(item), True, (230, 230, 230))
@@ -260,65 +259,26 @@ class ImageButton:
         )
 
 
-class Zombie:
-    """Zombie qui suit le joueur (mouvement plus naturel avec inertie)."""
-
-    def __init__(self, x, y, image, speed, screen_width, screen_height):
-        # image + hitbox
+class Pickup:
+    """Object ramassable (ex: couteau)"""
+    def __init__(self, name, rect, image=None):
+        self.name = name
+        self.rect = pygame.Rect(rect)  # (x, y, w, h)
         self.image = image
-        self.rect = self.image.get_rect(topleft=(x, y))
-        self.speed = speed
-        self.screen_width = screen_width
-        self.screen_height = screen_height
-
-        # positions float pour un mouvement fluide
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.vx = 0.0
-        self.vy = 0.0
-
-    def update(self, target_rect, dt):
-        # direction vers le joueur
-        dx = target_rect.centerx - self.rect.centerx
-        dy = target_rect.centery - self.rect.centery
-        dist = (dx * dx + dy * dy) ** 0.5
-        follow_distance = 40  # distance à laquelle le zombie s'arrête
-
-        if dist > follow_distance:
-            # vitesse désirée vers le joueur
-            desired_vx = (dx / dist) * self.speed
-            desired_vy = (dy / dist) * self.speed
-        else:
-            # on s'arrête si trop proche
-            desired_vx = 0.0
-            desired_vy = 0.0
-
-        # inertie légère pour un mouvement plus naturel (évite l'effet "vol")
-        accel = 6.0
-        self.vx += (desired_vx - self.vx) * min(1.0, accel * dt)
-        self.vy += (desired_vy - self.vy) * min(1.0, accel * dt)
-
-        self.x += self.vx
-        self.y += self.vy
-
-        self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
-
-        if self.rect.left < 0:
-            self.rect.left = 0
-            self.x = self.rect.x
-        if self.rect.right > self.screen_width:
-            self.rect.right = self.screen_width
-            self.x = self.rect.x
-        if self.rect.top < 0:
-            self.rect.top = 0
-            self.y = self.rect.y
-        if self.rect.bottom > self.screen_height:
-            self.rect.bottom = self.screen_height
-            self.y = self.rect.y
 
     def draw(self, screen):
-        screen.blit(self.image, self.rect)
+        if self.image:
+            screen.blit(self.image, self.rect)
+        else:
+            # si pas d'image, dessiner rect jaune
+            pygame.draw.rect(screen, (200, 200, 60), self.rect)
+
+    def can_pickup(self, player_rect, radius=40):
+        """Vrai si joueur assez proche pr ramasser"""
+        px, py = player_rect.center  # centre du joueur
+        ix, iy = self.rect.center    # centre de l'objet
+        dx, dy = px - ix, py - iy    # distance entre les centres
+        return (dx * dx + dy * dy) <= radius * radius  # distance² <= radius²
 
 
 # =========================
@@ -370,16 +330,11 @@ def load_assets():
     assets["lit"] = pygame.transform.scale(lit, (int(lit.get_width() * 0.5), int(lit.get_height() * 0.5)))
     assets["table"] = pygame.transform.scale(table, (int(table.get_width() * 0.5), int(table.get_height() * 0.45)))
 
+    # --- Pickups ---
+    assets["glass"] = load_image(IMG_DIR / "glass.png", size=(32, 32))  # choose size you want
+
     # --- Joueur ---
     assets["player_sprites"] = load_player_sprites(scale=2.5)
-
-    # --- Zombie ---
-    # --- Zombie (sprite unique) ---
-#    zombie_size = (
-#        int(PLAYER_SIZE[0] * ZOMBIE_SCALE),
-#        int(PLAYER_SIZE[1] * ZOMBIE_SCALE),
-#    )
-#    assets["zombie"] = load_image(BASE_DIR / "zombie.png", size=zombie_size)
 
     # --- Audio ---
     pygame.mixer.music.load(str(AUDIO_DIR / "28days_soundtrack.ogg"))
@@ -489,173 +444,58 @@ def game_screen(screen, assets, font):
     table_rect = assets["table"].get_rect(topleft=(30, 350))
     obstacles = [lit_rect, table_rect]
 
-    lit_rect2 = assets["lit"].get_rect(topleft=(500, 80))
-    table_rect2 = assets["table"].get_rect(topleft=(400, 400))
+    # Pickups (ramassables)
+    glass_img = assets["glass"]
+    pickups = [
+        Pickup("Verre", rect=(500, 420, 22, 22), image=glass_img)
+    ]
 
-    lit_rect3 = assets["lit"].get_rect(topleft=(600, 80))
-    table_rect3 = assets["table"].get_rect(topleft=(500, 550))
-
-    lit_rect4 = assets["lit"].get_rect(topleft=(20, 60))
-    table_rect4 = assets["table"].get_rect(topleft=(30, 350))
-
-
-    # Joueur (NE PAS CHANGER LA VITESSE -> 2.0 comme dans ton code final)
+    # Joueur
     player = Player(
-        x=375, y=275, width=PLAYER_SIZE[0], height=PLAYER_SIZE[1],
+        x=375, y=275, width=64, height=64,
         speed=4.0,
         screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
         sprites=assets["player_sprites"]
     )
 
-    # ZOMBIE: spawn + vitesse (plus bas = plus lent)
-#    zombie = Zombie(
-#        x=100, y=100,
-#        image=assets["zombie"],
-#        speed=1.8,
-#        screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT
-#    )
-
     player_health = HEALTH_MAX
-    # animation de perte de vie
-    health_flash = 0.0
-    damage_accum = 0.0  # cumul des pertes pour déclencher le flash
-
-    # Salle actuelle du joueur:
-    current_room = 1
-    
-    
     clock = pygame.time.Clock()
-
-    
-    darkness_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
 
-        # diminution de la vie (decay)
+        # diminution de la vie
         player_health = max(0, player_health - HEALTH_DECAY_PER_SEC * dt)
         if player_health <= 0:
             return "fin"
 
+        # --- draw world ---
         screen.blit(assets["game_bg"], (0, 0))
-        if current_room == 1:
-            screen.blit(assets["lit"], lit_rect)
-            screen.blit(assets["table"], table_rect)
-            obstacles = [lit_rect, table_rect]
+        screen.blit(assets["lit"], lit_rect)
+        screen.blit(assets["table"], table_rect)
 
-        elif current_room == 2:
-            screen.blit(assets["lit"], lit_rect2)
-            screen.blit(assets["table"], table_rect2)
-            obstacles = [lit_rect2, table_rect2]
-        
-        elif current_room == 3:
-            screen.blit(assets["lit"], lit_rect3)
-            screen.blit(assets["table"], table_rect3)
-            obstacles = [lit_rect3, table_rect3]
-
-        elif current_room == 4:
-            screen.blit(assets["lit"], lit_rect4)
-            screen.blit(assets["table"], table_rect4)
-            obstacles = [lit_rect4, table_rect4]
-        
-        # Vérification obstacles de la salle
-        if current_room == 1:
-            obstacles = [lit_rect, table_rect]
-        elif current_room == 2:
-            obstacles = [lit_rect2, table_rect2]
-        elif current_room == 3:
-            obstacles = [lit_rect3, table_rect3]
-        elif current_room == 4:
-            obstacles = [lit_rect4, table_rect4]
-        
-
+        # --- draw pickups ---
+        for p in pickups:
+            p.draw(screen)
 
         # update joueur
         keys = pygame.key.get_pressed()
         player.update(keys, obstacles)
         player.draw(screen)
 
-        # ----- PARAMÈTRES PORTE -----
-        door_size = 120
+        # --- pickup in range? ---
+        pickup_target = None
+        for p in pickups:
+            if p.can_pickup(player.rect, radius=PICKUP_RADIUS):
+                pickup_target = p
+                break
 
-        # portes verticales (droite/gauche)
-        door_top = SCREEN_HEIGHT // 2 - door_size // 2
-        door_bottom = SCREEN_HEIGHT // 2 + door_size // 2
-
-        # portes horizontales (haut/bas)
-        door_left = SCREEN_WIDTH // 2 - door_size // 2
-        door_right = SCREEN_WIDTH // 2 + door_size // 2
-
-
-        # Aller salle 2 (bord droit + zone centrale)
-        if (current_room == 1
-            and player.rect.right >= SCREEN_WIDTH
-            and door_top <= player.rect.centery <= door_bottom):
-
-            current_room = 2
-            player.rect.left = 5
-            player.x = player.rect.x
-
-
-
-        # Retour salle 1 (bord gauche + zone centrale)
-        if (current_room == 2
-            and player.rect.left <= 0
-            and door_top <= player.rect.centery <= door_bottom):
-
-            current_room = 1
-            player.rect.right = SCREEN_WIDTH - 5
-            player.x = player.rect.x
-
-        # Aller salle 3 (bord du bas + zone centrale)
-        if (current_room == 2
-            and player.rect.bottom >= SCREEN_HEIGHT
-            and door_left <= player.rect.centerx <= door_right):
-
-            current_room = 3
-            player.rect.top = 5
-            player.y = player.rect.y
-
-        # Retour salle 2 (bord du haut + zone centrale)
-        if (current_room == 3
-            and player.rect.top <= 0
-            and door_left <= player.rect.centerx <= door_right):
-
-            current_room = 2
-            player.rect.bottom = SCREEN_HEIGHT - 5
-            player.y = player.rect.y
-
-
-        # Aller salle 4 (bord gauche + zone centrale)
-        if (current_room == 3
-            and player.rect.left <= 0
-            and door_top <= player.rect.centery <= door_bottom):
-
-            current_room = 4
-            player.rect.right = SCREEN_WIDTH - 5
-            player.x = player.rect.x
-
-
-        # Retour salle 3 (bord droit + zone centrale)
-        if (current_room == 4
-            and player.rect.right >= SCREEN_WIDTH
-            and door_top <= player.rect.centery <= door_bottom):
-
-            current_room = 3
-            player.rect.left = 5
-            player.x = player.rect.x
-
-        
-
-
-
-
-
+        if pickup_target:
+            draw_prompt(screen, font, "Press E to pick up", 10, 40)
 
         # UI
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
-        draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE, flash=health_flash)
+        draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE)
 
         retour_button.draw(screen)
 
@@ -681,10 +521,18 @@ def game_screen(screen, assets, font):
                 if event.key == pygame.K_t:
                     inv_add("Item")
 
+                # --- PICKUP ---
+                if event.key == PICKUP_KEY and pickup_target:
+                    if inv_add(pickup_target.name):
+                        assets["click_sound"].play()
+                        pickups.remove(pickup_target)
+                    else:
+                        # inventory full feedback
+                        assets["click_sound"].play()
+
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
                     return "fin"
-
 
         pygame.display.update()
 
@@ -717,7 +565,7 @@ def main():
             state = fin_screen(screen, assets)
         elif state == "quit":
             running = False
-        else: #si on sait pas l'état du jeu on quitte au cas ou => risque de bugs
+        else:  # si on sait pas l'état du jeu on quitte au cas ou => risque de bugs
             running = False
 
     pygame.quit()
