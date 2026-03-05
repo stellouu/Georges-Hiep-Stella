@@ -32,6 +32,12 @@ inv_items = [None] * INV_SLOTS  # pour les objets dans l'inv
 # ================== PICKUPS =========
 PICKUP_KEY = pygame.K_e
 PICKUP_RADIUS = 40
+JOURNAL_TEXT = "..."
+JOURNAL_READ_RADIUS = 60
+JOURNAL_POS = (560, 280)
+JOURNAL_BOX_POS = (70, 430)
+JOURNAL_BOX_SIZE = (SCREEN_WIDTH - 140, 120) 
+JOURNAL_SIZE = (64, 48) # taille du sprite du journal dans la salle 2
 
 
 # =========================
@@ -58,6 +64,39 @@ def draw_prompt(screen, font, text, x, y):  # affiche un texte avec un fond semi
     bg.fill((0, 0, 0))
     screen.blit(bg, (x, y))
     screen.blit(label, (x + 6, y + 4))
+
+
+def draw_text_box(screen, font, text, box_rect, padding=12):
+    """Affiche un texte multi-lignes dans une boite semi-transparente."""
+    box = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
+    box.fill((0, 0, 0, 180))
+    screen.blit(box, box_rect.topleft)
+
+    words = text.split()
+    lines = []
+    current = ""
+    max_w = box_rect.width - 2 * padding
+
+    for word in words:
+        test = word if not current else f"{current} {word}"
+        if font.size(test)[0] <= max_w:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    if not lines:
+        lines = [text]
+
+    y = box_rect.top + padding
+    for line in lines:
+        label = font.render(line, True, (230, 230, 230))
+        if y + label.get_height() > box_rect.bottom - padding:
+            break
+        screen.blit(label, (box_rect.left + padding, y))
+        y += label.get_height() + 4
 
 
 def darken_image(image, amount=90):
@@ -314,6 +353,7 @@ def load_assets():
     # --- Images écrans ---
     assets["menu_bg"] = load_image(IMG_DIR / "menu.png", alpha=False)
     assets["game_bg"] = load_image(IMG_DIR / "game_bg.png", alpha=False)
+    assets["game_bg2"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
     assets["info_bg"] = load_image(IMG_DIR / "INFO_page.png", alpha=False)
     assets["fin_bg"] = load_image(IMG_DIR / "FIN_page.png", alpha=False)
 
@@ -332,6 +372,17 @@ def load_assets():
 
     # --- Pickups ---
     assets["glass"] = load_image(IMG_DIR / "glass.png", size=(32, 32))  # choose size you want
+    journal_path = IMG_DIR / "journal.png"
+    if not journal_path.exists():
+        journal_path = IMG_DIR / "Journal.png"
+    if journal_path.exists():
+        assets["journal"] = load_image(journal_path, size=JOURNAL_SIZE)
+    else:
+        # fallback visuel si le fichier image est absent
+        fallback = pygame.Surface(JOURNAL_SIZE, pygame.SRCALPHA)
+        fallback.fill((150, 110, 70))
+        pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
+        assets["journal"] = fallback
 
     # --- Joueur ---
     assets["player_sprites"] = load_player_sprites(scale=2.5)
@@ -439,16 +490,24 @@ def game_screen(screen, assets, font):
     retour_rect = assets["btn_back"].get_rect(topright=(SCREEN_WIDTH - 10, 10))
     retour_button = ImageButton(assets["btn_back"], retour_rect.topleft)
 
-    # Décor + obstacles
-    lit_rect = assets["lit"].get_rect(topleft=(20, 55))
-    table_rect = assets["table"].get_rect(topleft=(30, 350))
-    obstacles = [lit_rect, table_rect]
+    # Room 1: décor + obstacles
+    room1_lit_rect = assets["lit"].get_rect(topleft=(20, 55))
+    room1_table_rect = assets["table"].get_rect(topleft=(30, 350))
+    room1_obstacles = [room1_lit_rect, room1_table_rect]
+    room1_decors = [(assets["lit"], room1_lit_rect), (assets["table"], room1_table_rect)]
 
-    # Pickups (ramassables)
+    # Room 2: vide (aucun décor / obstacle)
+    room2_obstacles = []
+    room2_decors = []
+    journal_img = assets["journal"]
+    journal_rect = journal_img.get_rect(topleft=JOURNAL_POS)
+    journal_box_rect = pygame.Rect(JOURNAL_BOX_POS, JOURNAL_BOX_SIZE)
+    journal_open = False
+
+    # Pickups (ramassables) par room
     glass_img = assets["glass"]
-    pickups = [
-        Pickup("Verre", rect=(500, 420, 22, 22), image=glass_img)
-    ]
+    pickups_room1 = [Pickup("Verre", rect=(500, 420, 22, 22), image=glass_img)]
+    pickups_room2 = []
 
     # Joueur
     player = Player(
@@ -460,6 +519,27 @@ def game_screen(screen, assets, font):
 
     player_health = HEALTH_MAX
     clock = pygame.time.Clock()
+    current_room = 1
+
+    def draw_pickups(pickups):
+        for p in pickups:
+            if p.image:
+                screen.blit(p.image, p.rect)
+            else:
+                pygame.draw.rect(screen, (200, 200, 60), p.rect)
+
+    def draw_room(room_id):
+        if room_id == 1:
+            screen.blit(assets["game_bg"], (0, 0))
+            for img, rect in room1_decors:
+                screen.blit(img, rect)
+            draw_pickups(pickups_room1)
+        else:
+            screen.blit(assets["game_bg2"], (0, 0))
+            for img, rect in room2_decors:
+                screen.blit(img, rect)
+            draw_pickups(pickups_room2)
+            screen.blit(journal_img, journal_rect)
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
@@ -469,29 +549,46 @@ def game_screen(screen, assets, font):
         if player_health <= 0:
             return "fin"
 
-        # --- draw world ---
-        screen.blit(assets["game_bg"], (0, 0))
-        screen.blit(assets["lit"], lit_rect)
-        screen.blit(assets["table"], table_rect)
-
-        # --- draw pickups ---
-        for p in pickups:
-            p.draw(screen)
-
         # update joueur
         keys = pygame.key.get_pressed()
-        player.update(keys, obstacles)
-        player.draw(screen)
+        current_obstacles = room1_obstacles if current_room == 1 else room2_obstacles
+        player.update(keys, current_obstacles)
+
+        # Changement instantane de salle sur les bords
+        if current_room == 1 and player.rect.right >= SCREEN_WIDTH:
+            current_room = 2
+            player.rect.left = 10
+            player.x = player.rect.x
+        elif current_room == 2 and player.rect.left <= 0:
+            current_room = 1
+            player.rect.right = SCREEN_WIDTH - 10
+            player.x = player.rect.x
+
+        current_pickups = pickups_room1 if current_room == 1 else pickups_room2
+        journal_near = (
+            current_room == 2
+            and player.rect.inflate(JOURNAL_READ_RADIUS * 2, JOURNAL_READ_RADIUS * 2).colliderect(journal_rect)
+        )
+        if not journal_near:
+            journal_open = False
+
+        # --- draw world ---
+        draw_room(current_room)
+        screen.blit(player.image, player.rect)
 
         # --- pickup in range? ---
         pickup_target = None
-        for p in pickups:
+        for p in current_pickups:
             if p.can_pickup(player.rect, radius=PICKUP_RADIUS):
                 pickup_target = p
                 break
 
         if pickup_target:
             draw_prompt(screen, font, "Press E to pick up", 10, 40)
+        if journal_near:
+            draw_prompt(screen, font, "Press E to read journal", 10, 40)
+        if journal_open:
+            draw_text_box(screen, font, JOURNAL_TEXT, journal_box_rect)
 
         # UI
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
@@ -508,7 +605,11 @@ def game_screen(screen, assets, font):
                 return "menu"
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if table_rect.collidepoint(event.pos):
+                if (
+                    current_room == 1
+                    and room1_table_rect.collidepoint(event.pos)
+                    and player.rect.colliderect(room1_table_rect.inflate(12, 12))
+                ):
                     assets["heal"].play()
                     player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
 
@@ -525,10 +626,15 @@ def game_screen(screen, assets, font):
                 if event.key == PICKUP_KEY and pickup_target:
                     if inv_add(pickup_target.name):
                         assets["click_sound"].play()
-                        pickups.remove(pickup_target)
+                        current_pickups.remove(pickup_target)
                     else:
                         # inventory full feedback
                         assets["click_sound"].play()
+
+                # --- JOURNAL ---
+                if event.key == PICKUP_KEY and journal_near:
+                    assets["click_sound"].play()
+                    journal_open = True
 
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
