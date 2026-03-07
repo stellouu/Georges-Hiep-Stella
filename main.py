@@ -23,7 +23,6 @@ HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
 MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
-TABLE_HEAL_HITBOX_INFLATE = 100
 
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
@@ -31,14 +30,17 @@ inv_selected = 0
 inv_items = [None] * INV_SLOTS  # pour les objets dans l'inv
 
 # ================== PICKUPS =========
+# ================== CLARE PNG =========
 PICKUP_KEY = pygame.K_e
 PICKUP_RADIUS = 40
-JOURNAL_TEXT = "..."
-JOURNAL_READ_RADIUS = 60
-JOURNAL_POS = (560, 280)
-JOURNAL_BOX_POS = (70, 430)
-JOURNAL_BOX_SIZE = (SCREEN_WIDTH - 140, 120) 
-JOURNAL_SIZE = (100, 100) # taille du sprite du journal dans la salle 2
+CLARE_TEXT = ["Les monstres...Ils sont partout. Fais attention, et sois pret a te défendre. Un couteau, un bout de verre... (E) ",
+              "Si tu te sens faible, cherche un endroit pour te soigner, comme la chambre d'a coté. (E)",
+              "Apres tout, ce serait bete qu'un hopital n'ait pas de trousse de secours..."]
+CLARE_READ_RADIUS = 60
+CLARE_POS = (350, 3)
+CLARE_BOX_POS = (70, 430)
+CLARE_BOX_SIZE = (SCREEN_WIDTH - 140, 120)
+CLARE_SIZE = (100, 140) # taille du sprite du journal dans la salle 2
 
 
 # =========================
@@ -111,12 +113,12 @@ def darken_image(image, amount=90):
 # Inventaire
 # =========================
 
-def inv_add(item_name):
+def inv_add(item_img):
     """Ajoute l'objet dans la première case vide, return True si OK."""
     global inv_items
     for i in range(INV_SLOTS):
         if inv_items[i] is None:
-            inv_items[i] = item_name
+            inv_items[i] = item_img
             return True
     return False
 
@@ -153,7 +155,25 @@ def inv_draw(screen, w, h, font):
 
         # Afficher le texte de l'item (si présent)
         item = inv_items[i]
-        if item:
+        
+        if item is None:
+            continue
+
+        if isinstance(item, pygame.Surface):
+            icon = item
+            padding = 6
+            max_w = rect.width - 2 * padding
+            max_h = rect.height - 2 * padding
+
+            iw, ih = icon.get_size()
+            scale = min(max_w / iw, max_h / ih)
+            new_size = (max(1, int(iw * scale)), max(1, int(ih * scale)))
+
+            icon_scaled = pygame.transform.smoothscale(icon, new_size)
+            icon_rect = icon_scaled.get_rect(center=rect.center)
+            screen.blit(icon_scaled, icon_rect)
+        else:
+            # fallback: draw text if someone stored a string by mistake
             label = font.render(str(item), True, (230, 230, 230))
             label_rect = label.get_rect(center=rect.center)
             screen.blit(label, label_rect)
@@ -371,19 +391,18 @@ def load_assets():
     assets["lit"] = pygame.transform.scale(lit, (int(lit.get_width() * 0.5), int(lit.get_height() * 0.5)))
     assets["table"] = pygame.transform.scale(table, (int(table.get_width() * 0.5), int(table.get_height() * 0.45)))
 
-    # --- Pickups ---
-    assets["glass"] = load_image(IMG_DIR / "glass.png", size=(32, 32))  # choose size you want
-    journal_path = IMG_DIR / "journal.png"
-    if not journal_path.exists():
-        journal_path = IMG_DIR / "Journal.png"
-    if journal_path.exists():
-        assets["journal"] = load_image(journal_path, size=JOURNAL_SIZE)
+    # --- Pickups/PNGs ---
+    assets["glass"] = load_image(IMG_DIR / "glass.png", size=(50, 50))  # choose size you want
+    clare_path = IMG_DIR / "clare.png"
+    if clare_path.exists():
+        assets["clare"] = load_image(clare_path, size=CLARE_SIZE)
     else:
-        # fallback visuel si le fichier image est absent
-        fallback = pygame.Surface(JOURNAL_SIZE, pygame.SRCALPHA)
+        fallback = pygame.Surface(CLARE_SIZE, pygame.SRCALPHA)
         fallback.fill((150, 110, 70))
         pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
-        assets["journal"] = fallback
+        assets["clare"] = fallback
+    assets["clare_portrait"] = load_image(IMG_DIR / "claire_portrait.png", size=(200, 260))
+
 
     # --- Joueur ---
     assets["player_sprites"] = load_player_sprites(scale=2.5)
@@ -484,8 +503,12 @@ def fin_screen(screen, assets):
 
 
 def game_screen(screen, assets, font):
+
     """Boucle du jeu : décor, obstacles, joueur, inventaire, vie, retour menu."""
     global inv_selected
+
+    clare_open = False
+    clare_index = 0
 
     # Bouton retour
     retour_rect = assets["btn_back"].get_rect(topright=(SCREEN_WIDTH - 10, 10))
@@ -498,16 +521,23 @@ def game_screen(screen, assets, font):
     room1_decors = [(assets["lit"], room1_lit_rect), (assets["table"], room1_table_rect)]
 
     # Room 2: vide (aucun décor / obstacle)
-    room2_obstacles = []
+    # Room 2: Clare is visible AND collideable
     room2_decors = []
-    journal_img = assets["journal"]
-    journal_rect = journal_img.get_rect(topleft=JOURNAL_POS)
-    journal_box_rect = pygame.Rect(JOURNAL_BOX_POS, JOURNAL_BOX_SIZE)
-    journal_open = False
+
+    clare_img = assets["clare"]
+    clare_rect = clare_img.get_rect(topleft=CLARE_POS)
+    clare_box_rect = pygame.Rect(CLARE_BOX_POS, CLARE_BOX_SIZE)
+    clare_open = False
+
+    room2_obstacles = [clare_rect]
+    clare_box_rect = pygame.Rect(CLARE_BOX_POS, CLARE_BOX_SIZE)
+    clare_open = False
 
     # Pickups (ramassables) par room
     glass_img = assets["glass"]
-    pickups_room1 = [Pickup("Verre", rect=(500, 420, 22, 22), image=glass_img)]
+    pickups_room1 = [Pickup("Verre",
+                        rect=(500, 420, 
+                        glass_img.get_width(), glass_img.get_height()), image=glass_img)]
     pickups_room2 = []
 
     # Joueur
@@ -540,7 +570,7 @@ def game_screen(screen, assets, font):
             for img, rect in room2_decors:
                 screen.blit(img, rect)
             draw_pickups(pickups_room2)
-            screen.blit(journal_img, journal_rect)
+            screen.blit(clare_img, clare_rect)
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
@@ -566,12 +596,12 @@ def game_screen(screen, assets, font):
             player.x = player.rect.x
 
         current_pickups = pickups_room1 if current_room == 1 else pickups_room2
-        journal_near = (
-            current_room == 2
-            and player.rect.inflate(JOURNAL_READ_RADIUS * 2, JOURNAL_READ_RADIUS * 2).colliderect(journal_rect)
-        )
-        if not journal_near:
-            journal_open = False
+        clare_near = (
+        current_room == 2
+        and player.rect.inflate(CLARE_READ_RADIUS * 2, CLARE_READ_RADIUS * 2).colliderect(clare_rect)
+)
+        if not clare_near:
+            clare_open = False
 
         # --- draw world ---
         draw_room(current_room)
@@ -585,11 +615,23 @@ def game_screen(screen, assets, font):
                 break
 
         if pickup_target:
-            draw_prompt(screen, font, "Press E to pick up", 10, 40)
-        if journal_near:
-            draw_prompt(screen, font, "Press E to read journal", 10, 40)
-        if journal_open:
-            draw_text_box(screen, font, JOURNAL_TEXT, journal_box_rect)
+            draw_prompt(screen, font, "appuyer sur E pour ramasser", 10, 40)
+
+        if clare_near and not clare_open:
+            draw_prompt(screen, font, "appuyer sur E pour parler", 10, 40)
+
+        if clare_open:
+
+            portrait = assets["clare_portrait"]
+            portrait_rect = portrait.get_rect()
+
+        # position portrait slightly above the textbox
+            portrait_rect.bottomright = (clare_box_rect.right -10, clare_box_rect.top)
+
+            screen.blit(portrait, portrait_rect)
+
+            draw_text_box(screen, font, CLARE_TEXT[clare_index], clare_box_rect)
+            
 
         # UI
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
@@ -609,9 +651,7 @@ def game_screen(screen, assets, font):
                 if (
                     current_room == 1
                     and room1_table_rect.collidepoint(event.pos)
-                    and player.rect.colliderect(
-                        room1_table_rect.inflate(TABLE_HEAL_HITBOX_INFLATE, TABLE_HEAL_HITBOX_INFLATE)
-                    )
+                    and player.rect.colliderect(room1_table_rect.inflate(12, 12))
                 ):
                     assets["heal"].play()
                     player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
@@ -623,21 +663,28 @@ def game_screen(screen, assets, font):
                     inv_selected = 1
 
                 if event.key == pygame.K_t:
-                    inv_add("Item")
+                    inv_add(assets["glass"])
 
                 # --- PICKUP ---
                 if event.key == PICKUP_KEY and pickup_target:
-                    if inv_add(pickup_target.name):
+                    if inv_add(pickup_target.image):
                         assets["click_sound"].play()
                         current_pickups.remove(pickup_target)
                     else:
                         # inventory full feedback
                         assets["click_sound"].play()
 
-                # --- JOURNAL ---
-                if event.key == PICKUP_KEY and journal_near:
-                    assets["click_sound"].play()
-                    journal_open = True
+                # --- CLARE ---
+                if event.key == PICKUP_KEY and clare_near:
+
+                    if not clare_open:
+                        clare_open = True
+                        clare_index = 0
+                    else:
+                        clare_index += 1
+
+                    if clare_index >= len(CLARE_TEXT):
+                        clare_open = False
 
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
@@ -657,7 +704,7 @@ def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("menu + jeu + info")
 
-    font = pygame.font.Font(None, FONT_SIZE)
+    font = pygame.font.Font(str(ASSETS_DIR / "fonts" / "pixel.ttf"), 40)
     assets = load_assets()
 
     state = "menu"
