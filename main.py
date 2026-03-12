@@ -665,7 +665,7 @@ def game_screen(screen, assets, font):
                 if (
                     current_room == 1
                     and room1_table_rect.collidepoint(event.pos)
-                    and player.rect.colliderect(room1_table_rect.inflate(12, 12))
+                    and player.rect.colliderect(room1_table_rect.inflate(250, 250))
                 ):
                     assets["heal"].play()
                     player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
@@ -743,3 +743,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
