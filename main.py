@@ -375,6 +375,7 @@ def load_assets():
     assets["menu_bg"] = load_image(IMG_DIR / "menu.png", alpha=False)
     assets["game_bg"] = load_image(IMG_DIR / "game_bg.png", alpha=False)
     assets["game_bg2"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
+    assets["game_bg3"] = load_image(IMG_DIR / "game_bg3.png", alpha=False)
     assets["info_bg"] = load_image(IMG_DIR / "INFO_page.png", alpha=False)
     assets["fin_bg"] = load_image(IMG_DIR / "FIN_page.png", alpha=False)
 
@@ -401,7 +402,7 @@ def load_assets():
         fallback.fill((150, 110, 70))
         pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
         assets["clare"] = fallback
-    assets["clare_portrait"] = load_image(IMG_DIR / "claire_portrait.png", size=(200, 260))
+    
 
 
     # --- Joueur ---
@@ -539,6 +540,14 @@ def game_screen(screen, assets, font):
                         rect=(500, 420, 
                         glass_img.get_width(), glass_img.get_height()), image=glass_img)]
     pickups_room2 = []
+    pickups_room3 = []
+
+    # Room 3: vide
+    room3_decors = []
+    room3_obstacles = []
+
+    room_obstacles = {1: room1_obstacles, 2: room2_obstacles, 3: room3_obstacles}
+    room_pickups = {1: pickups_room1, 2: pickups_room2, 3: pickups_room3}
 
     # Joueur
     player = Player(
@@ -565,12 +574,17 @@ def game_screen(screen, assets, font):
             for img, rect in room1_decors:
                 screen.blit(img, rect)
             draw_pickups(pickups_room1)
-        else:
+        elif room_id == 2:
             screen.blit(assets["game_bg2"], (0, 0))
             for img, rect in room2_decors:
                 screen.blit(img, rect)
             draw_pickups(pickups_room2)
             screen.blit(clare_img, clare_rect)
+        else:
+            screen.blit(assets["game_bg3"], (0, 0))
+            for img, rect in room3_decors:
+                screen.blit(img, rect)
+            draw_pickups(pickups_room3)
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
@@ -582,7 +596,7 @@ def game_screen(screen, assets, font):
 
         # update joueur
         keys = pygame.key.get_pressed()
-        current_obstacles = room1_obstacles if current_room == 1 else room2_obstacles
+        current_obstacles = room_obstacles[current_room]
         player.update(keys, current_obstacles)
 
         # Changement instantane de salle sur les bords
@@ -594,8 +608,16 @@ def game_screen(screen, assets, font):
             current_room = 1
             player.rect.right = SCREEN_WIDTH - 10
             player.x = player.rect.x
+        elif current_room == 2 and player.rect.right >= SCREEN_WIDTH:
+            current_room = 3
+            player.rect.left = 10
+            player.x = player.rect.x
+        elif current_room == 3 and player.rect.left <= 0:
+            current_room = 2
+            player.rect.right = SCREEN_WIDTH - 10
+            player.x = player.rect.x
 
-        current_pickups = pickups_room1 if current_room == 1 else pickups_room2
+        current_pickups = room_pickups[current_room]
         clare_near = (
         current_room == 2
         and player.rect.inflate(CLARE_READ_RADIUS * 2, CLARE_READ_RADIUS * 2).colliderect(clare_rect)
@@ -621,14 +643,6 @@ def game_screen(screen, assets, font):
             draw_prompt(screen, font, "appuyer sur E pour parler", 10, 40)
 
         if clare_open:
-
-            portrait = assets["clare_portrait"]
-            portrait_rect = portrait.get_rect()
-
-        # position portrait slightly above the textbox
-            portrait_rect.bottomright = (clare_box_rect.right -10, clare_box_rect.top)
-
-            screen.blit(portrait, portrait_rect)
 
             draw_text_box(screen, font, CLARE_TEXT[clare_index], clare_box_rect)
             
@@ -729,4 +743,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
