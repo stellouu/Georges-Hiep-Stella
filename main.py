@@ -401,7 +401,7 @@ def load_assets():
         fallback.fill((150, 110, 70))
         pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
         assets["clare"] = fallback
-    assets["clare_portrait"] = load_image(IMG_DIR / "claire_portrait.png", size=(200, 260))
+    
 
 
     # --- Joueur ---
@@ -622,14 +622,6 @@ def game_screen(screen, assets, font):
 
         if clare_open:
 
-            portrait = assets["clare_portrait"]
-            portrait_rect = portrait.get_rect()
-
-        # position portrait slightly above the textbox
-            portrait_rect.bottomright = (clare_box_rect.right -10, clare_box_rect.top)
-
-            screen.blit(portrait, portrait_rect)
-
             draw_text_box(screen, font, CLARE_TEXT[clare_index], clare_box_rect)
             
 
@@ -729,3 +721,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
