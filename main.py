@@ -22,7 +22,7 @@ HEALTH_MAX = 100
 HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
-MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
+MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medicaments
 
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
@@ -743,4 +743,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
