@@ -1,6 +1,6 @@
 from pathlib import Path
 import pygame
-
+import math
 
 # =========================
 # Chemins et paramètres globaux
@@ -182,6 +182,68 @@ def inv_draw(screen, w, h, font):
 # =========================
 # Classes de jeu
 # =========================
+
+class Enemy:
+    def __init__(self, x, y, width, height, speed, screen_width, screen_height, image=None):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.x = float(x)
+        self.y = float(y)
+        self.speed = speed
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.image = image
+
+    def collision(self, obstacles):
+        for obj in obstacles:
+            if self.rect.colliderect(obj):
+                return True
+        return False
+
+    def can_see_player(self, player_rect, radius=220):
+        ex, ey = self.rect.center
+        px, py = player_rect.center
+        dx = px - ex
+        dy = py - ey
+        return (dx * dx + dy * dy) <= radius * radius
+
+    def update(self, player_rect, obstacles):
+        if not self.can_see_player(player_rect):
+            return
+
+        ex, ey = self.rect.center
+        px, py = player_rect.center
+
+        dx = px - ex
+        dy = py - ey
+        dist = math.hypot(dx, dy)
+
+        if dist == 0:
+            return
+
+        dir_x = dx / dist
+        dir_y = dy / dist
+
+        # move X separately
+        old_x = self.x
+        self.x += dir_x * self.speed
+        self.rect.x = int(self.x)
+        if self.collision(obstacles):
+            self.x = old_x
+            self.rect.x = int(self.x)
+
+        # move Y separately
+        old_y = self.y
+        self.y += dir_y * self.speed
+        self.rect.y = int(self.y)
+        if self.collision(obstacles):
+            self.y = old_y
+            self.rect.y = int(self.y)
+
+    def draw(self, screen):
+        if self.image:
+            screen.blit(self.image, self.rect)
+        else:
+            pygame.draw.rect(screen, (180, 50, 50), self.rect)
 
 class Player:
     """Joueur avec animations ds 4 directions+collisions+limites écran."""
@@ -549,6 +611,32 @@ def game_screen(screen, assets, font):
     room_obstacles = {1: room1_obstacles, 2: room2_obstacles, 3: room3_obstacles}
     room_pickups = {1: pickups_room1, 2: pickups_room2, 3: pickups_room3}
 
+    #ENNEMIES
+    
+        # Enemies by room
+    enemies_room1 = [
+        Enemy(x=600, y=120, width=40, height=40, speed=1.5,
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
+    ]
+
+    enemies_room2 = [
+        Enemy(x=500, y=300, width=40, height=40, speed=1.2,
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
+    ]
+
+    enemies_room3 = [
+        Enemy(x=300, y=220, width=40, height=40, speed=2.0,
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT),
+        Enemy(x=650, y=400, width=40, height=40, speed=1.0,
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
+    ]
+
+    room_enemies = {
+        1: enemies_room1,
+        2: enemies_room2,
+        3: enemies_room3,
+    }
+
     # Joueur
     player = Player(
         x=375, y=275, width=64, height=64,
@@ -588,7 +676,7 @@ def game_screen(screen, assets, font):
 
     while True:
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
-
+        
         # diminution de la vie
         player_health = max(0, player_health - HEALTH_DECAY_PER_SEC * dt)
         if player_health <= 0:
@@ -598,6 +686,14 @@ def game_screen(screen, assets, font):
         keys = pygame.key.get_pressed()
         current_obstacles = room_obstacles[current_room]
         player.update(keys, current_obstacles)
+
+        current_enemies = room_enemies[current_room]
+
+        for enemy in current_enemies:
+            enemy.update(player.rect, current_obstacles)
+
+            if player.rect.colliderect(enemy.rect):
+                player_health = max(0, player_health - 20 * dt)
 
         # Changement instantane de salle sur les bords
         if current_room == 1 and player.rect.right >= SCREEN_WIDTH:
@@ -626,7 +722,12 @@ def game_screen(screen, assets, font):
             clare_open = False
 
         # --- draw world ---
+
         draw_room(current_room)
+
+        for enemy in current_enemies:
+            enemy.draw(screen)
+
         screen.blit(player.image, player.rect)
 
         # --- pickup in range? ---
