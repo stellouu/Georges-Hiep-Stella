@@ -736,9 +736,15 @@ def game_screen(screen, assets, font):
             if p.can_pickup(player.rect, radius=PICKUP_RADIUS):
                 pickup_target = p
                 break
+        heal_table_near = (
+            current_room == 1
+            and player.rect.colliderect(room1_table_rect.inflate(50, 50))
+        )
 
         if pickup_target:
             draw_prompt(screen, font, "appuyer sur E pour ramasser", 10, 40)
+        elif heal_table_near:
+            draw_prompt(screen, font, "appuyer sur E pour se soigner", 10, 40)
 
         if clare_near and not clare_open:
             draw_prompt(screen, font, "appuyer sur E pour parler", 10, 40)
@@ -762,15 +768,6 @@ def game_screen(screen, assets, font):
                 assets["click_sound"].play()
                 return "menu"
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if (
-                    current_room == 1
-                    and room1_table_rect.collidepoint(event.pos)
-                    and player.rect.colliderect(room1_table_rect.inflate(250, 250))
-                ):
-                    assets["heal"].play()
-                    player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
-
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     inv_selected = 0
@@ -780,26 +777,27 @@ def game_screen(screen, assets, font):
                 if event.key == pygame.K_t:
                     inv_add(assets["glass"])
 
-                # --- PICKUP ---
-                if event.key == PICKUP_KEY and pickup_target:
-                    if inv_add(pickup_target.image):
-                        assets["click_sound"].play()
-                        current_pickups.remove(pickup_target)
-                    else:
-                        # inventory full feedback
-                        assets["click_sound"].play()
+                if event.key == PICKUP_KEY:
+                    # Prioritise the closest interaction tied to the E key.
+                    if pickup_target:
+                        if inv_add(pickup_target.image):
+                            assets["click_sound"].play()
+                            current_pickups.remove(pickup_target)
+                        else:
+                            # inventory full feedback
+                            assets["click_sound"].play()
+                    elif heal_table_near:
+                        assets["heal"].play()
+                        player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
+                    elif clare_near:
+                        if not clare_open:
+                            clare_open = True
+                            clare_index = 0
+                        else:
+                            clare_index += 1
 
-                # --- CLARE ---
-                if event.key == PICKUP_KEY and clare_near:
-
-                    if not clare_open:
-                        clare_open = True
-                        clare_index = 0
-                    else:
-                        clare_index += 1
-
-                    if clare_index >= len(CLARE_TEXT):
-                        clare_open = False
+                        if clare_index >= len(CLARE_TEXT):
+                            clare_open = False
 
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
