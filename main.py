@@ -47,6 +47,8 @@ CLARE_SIZE = (100, 140) # taille du sprite du journal dans la salle 2
 # pour UI (user interface)
 # =========================
 
+ATTACK_KEY = pygame.K_SPACE
+
 def draw_health_bar(screen, current, max_value, pos, size):
     """Dessine une barre de vie simple (fond + vie + contour)."""
     x, y = pos
@@ -178,7 +180,13 @@ def inv_draw(screen, w, h, font):
             label_rect = label.get_rect(center=rect.center)
             screen.blit(label, label_rect)
 
+def player_has_weapon():
+    for item in inv_items:
+        if item is not None:
+            return True
+    return False
 
+    
 # =========================
 # Classes de jeu
 # =========================
@@ -192,6 +200,7 @@ class Enemy:
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.image = image
+        self.health = 50
 
     def collision(self, obstacles):
         for obj in obstacles:
@@ -347,6 +356,21 @@ class Player:
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
+#attacked
+
+def get_attack_rect(player):
+    size = 40
+    px, py = player.rect.center
+
+    # direction based on animation
+    if player.current_anim == player.walk_right:
+        return pygame.Rect(player.rect.right, py - size//2, size, size)
+    elif player.current_anim == player.walk_left:
+        return pygame.Rect(player.rect.left - size, py - size//2, size, size)
+    elif player.current_anim == player.walk_back:
+        return pygame.Rect(px - size//2, player.rect.top - size, size, size)
+    else:  # front
+        return pygame.Rect(px - size//2, player.rect.bottom, size, size)
 
 class ImageButton:
     """Bouton image avec effet hover (assombri + léger zoom) + détection clic."""
@@ -736,15 +760,9 @@ def game_screen(screen, assets, font):
             if p.can_pickup(player.rect, radius=PICKUP_RADIUS):
                 pickup_target = p
                 break
-        heal_table_near = (
-            current_room == 1
-            and player.rect.colliderect(room1_table_rect.inflate(50, 50))
-        )
 
         if pickup_target:
             draw_prompt(screen, font, "appuyer sur E pour ramasser", 10, 40)
-        elif heal_table_near:
-            draw_prompt(screen, font, "appuyer sur E pour se soigner", 10, 40)
 
         if clare_near and not clare_open:
             draw_prompt(screen, font, "appuyer sur E pour parler", 10, 40)
@@ -768,6 +786,15 @@ def game_screen(screen, assets, font):
                 assets["click_sound"].play()
                 return "menu"
 
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if (
+                    current_room == 1
+                    and room1_table_rect.collidepoint(event.pos)
+                    and player.rect.colliderect(room1_table_rect.inflate(250, 250))
+                ):
+                    assets["heal"].play()
+                    player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     inv_selected = 0
@@ -777,31 +804,42 @@ def game_screen(screen, assets, font):
                 if event.key == pygame.K_t:
                     inv_add(assets["glass"])
 
-                if event.key == PICKUP_KEY:
-                    # Prioritise the closest interaction tied to the E key.
-                    if pickup_target:
-                        if inv_add(pickup_target.image):
-                            assets["click_sound"].play()
-                            current_pickups.remove(pickup_target)
-                        else:
-                            # inventory full feedback
-                            assets["click_sound"].play()
-                    elif heal_table_near:
-                        assets["heal"].play()
-                        player_health = min(HEALTH_MAX, player_health + MED_HEAL_AMOUNT)
-                    elif clare_near:
-                        if not clare_open:
-                            clare_open = True
-                            clare_index = 0
-                        else:
-                            clare_index += 1
+                # --- PICKUP ---
+                if event.key == PICKUP_KEY and pickup_target:
+                    if inv_add(pickup_target.image):
+                        assets["click_sound"].play()
+                        current_pickups.remove(pickup_target)
+                    else:
+                        # inventory full feedback
+                        assets["click_sound"].play()
+                if event.key == pygame.K_LSHIFT:
+                    player.speed = 6.0
+                else:
+                    player.speed = 4.0
+                # --- CLARE ---
+                if event.key == PICKUP_KEY and clare_near:
 
-                        if clare_index >= len(CLARE_TEXT):
-                            clare_open = False
+                    if not clare_open:
+                        clare_open = True
+                        clare_index = 0
+                    else:
+                        clare_index += 1
+
+                    if clare_index >= len(CLARE_TEXT):
+                        clare_open = False
 
                 if event.key == pygame.K_l:
                     assets["click_sound"].play()
                     return "fin"
+                if event.key == ATTACK_KEY and player_has_weapon():
+                    attack_rect = get_attack_rect(player)
+
+                    for enemy in current_enemies[:]:  # copy list
+                        if attack_rect.colliderect(enemy.rect):
+                            enemy.health -= 25  # damage
+
+                        if enemy.health <= 0:
+                            current_enemies.remove(enemy)
 
         pygame.display.update()
 
