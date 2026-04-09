@@ -1,3 +1,4 @@
+
 from pathlib import Path
 import pygame
 import math
@@ -23,6 +24,11 @@ HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
 MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
+# ================== ATTACK ===========
+
+ATTACK_KEY = pygame.K_SPACE
+ATTACK_RADIUS = 50
+ATTACK_DAMAGE = 40
 
 # ================== INVENTAIRE ========
 INV_SLOTS = 2
@@ -205,28 +211,30 @@ class Enemy:
         return False
 
     def can_see_player(self, player_rect, radius=220):
-        ex, ey = self.rect.center
-        px, py = player_rect.center
-        dx = px - ex
-        dy = py - ey
-        return (dx * dx + dy * dy) <= radius * radius
+        ex, ey = self.rect.center #centre de lennemi
+        px, py = player_rect.center #centre du joueur
+        dx = px - ex #distance en x entre les deux
+        dy = py - ey #distance en y entre les deux
+        return (dx * dx + dy * dy) <= radius**2 #distance² <= radius²
+    
+    #ici ennemi detecte joueur en verifiant si la distance qui sépare les deux (dx, dy) est dans le rayon (carré) de l'ennemi
 
     def update(self, player_rect, obstacles):
         if not self.can_see_player(player_rect):
-            return
+            return #arret
 
         ex, ey = self.rect.center
         px, py = player_rect.center
 
         dx = px - ex
         dy = py - ey
-        dist = math.hypot(dx, dy)
+        dist = math.hypot(dx, dy) #pour calc l'hypoténuse (dist réelle) entre les deux (au lieu de sqrt(dx*dx+dy*dy))
 
         if dist == 0:
-            return
+            return #arret pour attaquer
 
-        dir_x = dx / dist
-        dir_y = dy / dist
+        dir_x = dx / dist #normalisation du vecteur direction (dx, dy) pour que sa longueur soit 1
+        dir_y = dy / dist 
 
         # move X separately
         old_x = self.x
@@ -470,7 +478,7 @@ def load_assets():
         pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
         assets["clare"] = fallback
     
-
+    assets["enemy"] = load_image(IMG_DIR / "enemy.png", size=(40, 40))
 
     # --- Joueur ---
     assets["player_sprites"] = load_player_sprites(scale=2.5)
@@ -574,7 +582,7 @@ def game_screen(screen, assets, font):
 
     """Boucle du jeu : décor, obstacles, joueur, inventaire, vie, retour menu."""
     global inv_selected
-
+    inv_reset()
     clare_open = False
     clare_index = 0
 
@@ -619,21 +627,15 @@ def game_screen(screen, assets, font):
     #ENNEMIES
     
         # Enemies by room
-    enemies_room1 = [
-        Enemy(x=600, y=120, width=40, height=40, speed=1.5,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
-    ]
+    enemies_room1 = []
 
-    enemies_room2 = [
-        Enemy(x=500, y=300, width=40, height=40, speed=1.2,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
-    ]
+    enemies_room2 = []
 
     enemies_room3 = [
-        Enemy(x=300, y=220, width=40, height=40, speed=2.0,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT),
+        Enemy(x=300, y=220, width=50, height=50, speed=2.0,
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT, image=assets["enemy"]),
         Enemy(x=650, y=400, width=40, height=40, speed=1.0,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT)
+              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT, image=assets["enemy"])
     ]
 
     room_enemies = {
@@ -680,6 +682,7 @@ def game_screen(screen, assets, font):
             draw_pickups(pickups_room3)
 
     while True:
+        
         dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
         
         # diminution de la vie
