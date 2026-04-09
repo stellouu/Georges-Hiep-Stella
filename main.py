@@ -122,6 +122,11 @@ def inv_add(item_img):
             return True
     return False
 
+def inv_reset():
+    """Vide l'inventaire et remet la selection sur la premiere case."""
+    global inv_items, inv_selected
+    inv_items = [None] * INV_SLOTS
+    inv_selected = 0
 
 def inv_draw(screen, w, h, font):
     """
