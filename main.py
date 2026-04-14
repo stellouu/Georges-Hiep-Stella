@@ -1,7 +1,6 @@
-
 from pathlib import Path
-import pygame
 import math
+import pygame
 
 # =========================
 # Chemins et paramètres globaux
@@ -11,93 +10,159 @@ BASE_DIR = Path(__file__).resolve().parent
 ASSETS_DIR = BASE_DIR / "assets"
 IMG_DIR = ASSETS_DIR / "images"
 AUDIO_DIR = ASSETS_DIR / "audio"
-VB_DIR = BASE_DIR / "VB"  # sprites du joueur (VB = "Victor Blackwell")
+VB_DIR = BASE_DIR / "VB"  # sprites du joueur
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 FPS = 60
 
-FONT_SIZE = 50
+# =========================
+# Gameplay
+# =========================
 
-# ================== BARRE DE VIE =========
 HEALTH_MAX = 100
 HEALTH_DECAY_PER_SEC = 1
 HEALTH_BAR_POS = (10, 10)
 HEALTH_BAR_SIZE = (200, 18)
-MED_HEAL_AMOUNT = 25  # quantité de vie rendue par les medcaments
-# ================== ATTACK ===========
+MED_HEAL_AMOUNT = 25
 
 ATTACK_KEY = pygame.K_SPACE
 ATTACK_RADIUS = 50
-ATTACK_DAMAGE = 40
+ATTACK_COOLDOWN = 300  # ms entre deux attaques
 
-# ================== INVENTAIRE ========
+ENEMY_DAMAGE = 20
+ZOMBIE_DAMAGE = 35
+
 INV_SLOTS = 2
-inv_selected = 0
-inv_items = [None] * INV_SLOTS  # pour les objets dans l'inv
-
-# ================== PICKUPS =========
-# ================== CLARE PNG =========
 PICKUP_KEY = pygame.K_e
-PICKUP_RADIUS = 40
-CLARE_TEXT = ["Les monstres...Ils sont partout. Fais attention, et sois pret a te défendre. Un couteau, un bout de verre... (E) ",
-              "Si tu te sens faible, cherche un endroit pour te soigner, comme la chambre d'a coté. (E)",
-              "Apres tout, ce serait bete qu'un hopital n'ait pas de trousse de secours..."]
+PICKUP_RADIUS = 65
+
+intro_lines = [
+    "Ou... ou suis-je ?",
+    "Quelque chose rode dans les couloirs.",
+    "Je dois sortir d'ici. Maintenant."
+]
+
+CLARE_TEXT = [
+    "Les monstres... Ils sont partout. Fais attention, et sois pret a te defendre. Un couteau, un bout de verre... (E)",
+    "Si tu te sens faible, cherche un endroit pour te soigner, comme la chambre d'a cote. (E)",
+    "Apres tout, ce serait bete qu'un hopital n'ait pas de trousse de secours... (E)",
+    "Il y a des petits monstres, moins forts que les zombies. Tu peux les tuer avec un bout de verre. (E)",
+    "Les zombies sont plus forts, mais tu peux les tuer avec un couteau. (E)",
+    "Si tu les tues tous, on pourra peut-etre s'echapper...",
+]
 CLARE_READ_RADIUS = 60
 CLARE_POS = (350, 3)
 CLARE_BOX_POS = (70, 430)
 CLARE_BOX_SIZE = (SCREEN_WIDTH - 140, 120)
-CLARE_SIZE = (100, 140) # taille du sprite du journal dans la salle 2
+CLARE_SIZE = (100, 140)
+
+# =========================
+# Inventaire global
+# =========================
+
+inv_selected = 0
+inv_items = [None] * INV_SLOTS
 
 
 # =========================
-# pour UI (user interface)
+# UI
 # =========================
+
+def intro_overlay(screen, font, lines, delay=2500):
+    """
+    Affiche un écran noir avec quelques lignes d'introduction.
+    Le joueur peut attendre ou appuyer sur une touche pour continuer.
+    """
+    start_time = pygame.time.get_ticks()
+    small_font = pygame.font.Font(font.path if hasattr(font, "path") else None, 28)
+
+    while True:
+        screen.fill((0, 0, 0))
+
+        total_height = len(lines) * 50
+        start_y = (SCREEN_HEIGHT - total_height) // 2
+
+        for i, line in enumerate(lines):
+            label = font.render(line, True, (230, 230, 230))
+            rect = label.get_rect(center=(SCREEN_WIDTH // 2, start_y + i * 50))
+            screen.blit(label, rect)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                return None
+
+        if pygame.time.get_ticks() - start_time >= delay:
+            return None
+
+        pygame.display.update()
+
+def draw_darkness_overlay(screen, player_rect, radius=140):
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 175))
+    light_pos = (player_rect.centerx + 20, player_rect.bottom - 10)
+
+    for r in range(radius, 0, -10):
+        alpha = int(175 * (r / radius))
+        pygame.draw.circle(
+            overlay,
+            (0, 0, 0, alpha),
+            light_pos,
+            r
+        )
+
+    screen.blit(overlay, (0, 0))
 
 def draw_health_bar(screen, current, max_value, pos, size):
-    """Dessine une barre de vie simple (fond + vie + contour)."""
+    """Dessine une barre de vie simple."""
     x, y = pos
     w, h = size
     ratio = max(0, min(1, current / max_value)) if max_value > 0 else 0
     fill_w = int(w * ratio)
 
-    pygame.draw.rect(screen, (40, 40, 40), (x, y, w, h))          # fond
-    pygame.draw.rect(screen, (220, 40, 40), (x, y, fill_w, h))    # vie
-    pygame.draw.rect(screen, (230, 230, 230), (x, y, w, h), 2)    # contour
+    pygame.draw.rect(screen, (40, 40, 40), (x, y, w, h))
+    pygame.draw.rect(screen, (220, 40, 40), (x, y, fill_w, h))
+    pygame.draw.rect(screen, (230, 230, 230), (x, y, w, h), 2)
 
 
-def draw_prompt(screen, font, text, x, y):  # affiche un texte avec un fond semi-transparent
-    """"Affiche un texte avec un fond semi-transparent"""
+def draw_prompt(screen, font, text, x, y, bg_color=(0, 0, 0), alpha=160):
+    """Affiche un petit message avec fond semi-transparent."""
     label = font.render(text, True, (230, 230, 230))
     bg = pygame.Surface((label.get_width() + 12, label.get_height() + 8))
-    bg.set_alpha(160)
-    bg.fill((0, 0, 0))
+    bg.set_alpha(alpha)
+    bg.fill(bg_color)
     screen.blit(bg, (x, y))
     screen.blit(label, (x + 6, y + 4))
 
 
+def draw_enemy_counter(screen, font, text, x, y):
+    """Affiche le nombre d'ennemis restants."""
+    draw_prompt(screen, font, text, x, y, bg_color=(120, 17, 17), alpha=190)
+
+
 def draw_text_box(screen, font, text, box_rect, padding=12):
-    """Affiche un texte multi-lignes dans une boite semi-transparente."""
+    """Affiche un texte multi-lignes dans une boîte semi-transparente."""
     box = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
     box.fill((0, 0, 0, 180))
     screen.blit(box, box_rect.topleft)
 
     words = text.split()
     lines = []
-    current = ""
+    current_line = ""
     max_w = box_rect.width - 2 * padding
 
     for word in words:
-        test = word if not current else f"{current} {word}"
-        if font.size(test)[0] <= max_w:
-            current = test
+        test_line = word if not current_line else f"{current_line} {word}"
+        if font.size(test_line)[0] <= max_w:
+            current_line = test_line
         else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    if not lines:
-        lines = [text]
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+
+    if current_line:
+        lines.append(current_line)
 
     y = box_rect.top + padding
     for line in lines:
@@ -109,7 +174,7 @@ def draw_text_box(screen, font, text, box_rect, padding=12):
 
 
 def darken_image(image, amount=90):
-    """Assombrit une image en soustrayant une valeur RGB (garde l'alpha)."""
+    """Assombrit une image en conservant son alpha."""
     dark = image.copy()
     dark.fill((amount, amount, amount), special_flags=pygame.BLEND_RGB_SUB)
     return dark
@@ -120,7 +185,7 @@ def darken_image(image, amount=90):
 # =========================
 
 def inv_add(item_img):
-    """Ajoute l'objet dans la première case vide, return True si OK."""
+    """Ajoute un objet dans la première case vide."""
     global inv_items
     for i in range(INV_SLOTS):
         if inv_items[i] is None:
@@ -128,17 +193,16 @@ def inv_add(item_img):
             return True
     return False
 
+
 def inv_reset():
-    """Vide l'inventaire et remet la selection sur la premiere case."""
+    """Vide l'inventaire et remet la sélection sur la première case."""
     global inv_items, inv_selected
     inv_items = [None] * INV_SLOTS
     inv_selected = 0
 
-def inv_draw(screen, w, h, font):
-    """
-    Dessine l'inventaire (2 cases) en bas de l'écran.
-    Note : version minimale, affiche juste le nom des items.
-    """
+
+def inv_draw(screen, width, height, font):
+    """Dessine l'inventaire en bas de l'écran."""
     global inv_selected, inv_items
 
     bar_h = 80
@@ -146,97 +210,96 @@ def inv_draw(screen, w, h, font):
     gap = 8
 
     total_w = INV_SLOTS * slot_w + (INV_SLOTS - 1) * gap
-    start_x = (w - total_w) // 2
-    start_y = h - bar_h + (bar_h - slot_h) // 2
+    start_x = (width - total_w) // 2
+    start_y = height - bar_h + (bar_h - slot_h) // 2
 
-    # --- inventory slots ---
     for i in range(INV_SLOTS):
         x = start_x + i * (slot_w + gap)
         y = start_y
         rect = pygame.Rect(x, y, slot_w, slot_h)
 
-        # FOND OPAQUE (cache le jeu derrière)
         pygame.draw.rect(screen, (0, 0, 0), rect)
+        border_color = (230, 230, 230) if i == inv_selected else (120, 120, 120)
+        border_width = 3 if i == inv_selected else 2
+        pygame.draw.rect(screen, border_color, rect, border_width)
 
-        # contour de la case (plus épais si sélectionnée)
-        if i == inv_selected:
-            pygame.draw.rect(screen, (230, 230, 230), rect, 3)
-        else:
-            pygame.draw.rect(screen, (120, 120, 120), rect, 2)
-
-        # Afficher le texte de l'item (si présent)
         item = inv_items[i]
-        
         if item is None:
             continue
 
         if isinstance(item, pygame.Surface):
-            icon = item
             padding = 6
             max_w = rect.width - 2 * padding
             max_h = rect.height - 2 * padding
-
-            iw, ih = icon.get_size()
+            iw, ih = item.get_size()
             scale = min(max_w / iw, max_h / ih)
             new_size = (max(1, int(iw * scale)), max(1, int(ih * scale)))
-
-            icon_scaled = pygame.transform.smoothscale(icon, new_size)
+            icon_scaled = pygame.transform.smoothscale(item, new_size)
             icon_rect = icon_scaled.get_rect(center=rect.center)
             screen.blit(icon_scaled, icon_rect)
         else:
-            # fallback: draw text if someone stored a string by mistake
             label = font.render(str(item), True, (230, 230, 230))
             label_rect = label.get_rect(center=rect.center)
             screen.blit(label, label_rect)
 
 
 # =========================
-# Classes de jeu
+# Classes
 # =========================
 
 class Enemy:
-    def __init__(self, x, y, width, height, speed, screen_width, screen_height, image=None):
+    def __init__(self, x, y, width, height, speed, image=None, enemy_type="enemy"):
         self.rect = pygame.Rect(x, y, width, height)
         self.x = float(x)
         self.y = float(y)
         self.speed = speed
-        self.screen_width = screen_width
-        self.screen_height = screen_height
         self.image = image
+        self.enemy_type = enemy_type
+        self.hit_flash_timer = 0
+
+        if enemy_type == "enemy":
+            self.max_health = 2
+            self.health = 2
+            self.damage_to_player = ENEMY_DAMAGE
+        elif enemy_type == "zombie":
+            self.max_health = 4
+            self.health = 4
+            self.damage_to_player = ZOMBIE_DAMAGE
+        else:
+            self.max_health = 1
+            self.health = 1
+            self.damage_to_player = ENEMY_DAMAGE
 
     def collision(self, obstacles):
-        for obj in obstacles:
-            if self.rect.colliderect(obj):
-                return True
-        return False
+        return any(self.rect.colliderect(obj) for obj in obstacles)
 
     def can_see_player(self, player_rect, radius=220):
-        ex, ey = self.rect.center #centre de lennemi
-        px, py = player_rect.center #centre du joueur
-        dx = px - ex #distance en x entre les deux
-        dy = py - ey #distance en y entre les deux
-        return (dx * dx + dy * dy) <= radius**2 #distance² <= radius²
-    
-    #ici ennemi detecte joueur en verifiant si la distance qui sépare les deux (dx, dy) est dans le rayon (carré) de l'ennemi
+        ex, ey = self.rect.center
+        px, py = player_rect.center
+        dx = px - ex
+        dy = py - ey
+        return (dx * dx + dy * dy) <= radius ** 2
 
-    def update(self, player_rect, obstacles):
+    def update(self, player_rect, obstacles, dt_ms):
+        if self.hit_flash_timer > 0:
+            self.hit_flash_timer -= dt_ms
+
         if not self.can_see_player(player_rect):
-            return #arret
+            return
 
         ex, ey = self.rect.center
         px, py = player_rect.center
-
         dx = px - ex
         dy = py - ey
-        dist = math.hypot(dx, dy) #pour calc l'hypoténuse (dist réelle) entre les deux (au lieu de sqrt(dx*dx+dy*dy))
+        dist = math.hypot(dx, dy)
 
         if dist == 0:
-            return #arret pour attaquer
+            return
 
-        dir_x = dx / dist #normalisation du vecteur direction (dx, dy) pour que sa longueur soit 1
-        dir_y = dy / dist 
+        dir_x = dx / dist
+        dir_y = dy / dist
 
-        # move X separately
+        # Déplacement séparé sur X puis Y pour éviter de traverser les obstacles.
         old_x = self.x
         self.x += dir_x * self.speed
         self.rect.x = int(self.x)
@@ -244,7 +307,6 @@ class Enemy:
             self.x = old_x
             self.rect.x = int(self.x)
 
-        # move Y separately
         old_y = self.y
         self.y += dir_y * self.speed
         self.rect.y = int(self.y)
@@ -252,14 +314,36 @@ class Enemy:
             self.y = old_y
             self.rect.y = int(self.y)
 
+    def take_damage(self, weapon_name):
+        """Applique des dégâts seulement si l'arme est adaptée au type d'ennemi."""
+        damage_applied = False
+
+        if self.enemy_type == "enemy" and weapon_name == "glass":
+            self.health -= 1
+            damage_applied = True
+        elif self.enemy_type == "zombie" and weapon_name == "knife":
+            self.health -= 2
+            damage_applied = True
+
+        if damage_applied:
+            self.hit_flash_timer = 200
+
+        return self.health <= 0
+
     def draw(self, screen):
         if self.image:
             screen.blit(self.image, self.rect)
+            if self.hit_flash_timer > 0:
+                flash = pygame.Surface(self.rect.size, pygame.SRCALPHA)
+                flash.fill((255, 0, 0, 120))
+                screen.blit(flash, self.rect.topleft)
         else:
-            pygame.draw.rect(screen, (180, 50, 50), self.rect)
+            color = (255, 0, 0) if self.hit_flash_timer > 0 else (180, 50, 50)
+            pygame.draw.rect(screen, color, self.rect)
+
 
 class Player:
-    """Joueur avec animations ds 4 directions+collisions+limites écran."""
+    """Joueur avec animations, collisions et limites écran."""
 
     def __init__(self, x, y, width, height, speed, screen_width, screen_height, sprites):
         self.rect = pygame.Rect(x, y, width, height)
@@ -267,42 +351,27 @@ class Player:
         self.screen_width = screen_width
         self.screen_height = screen_height
 
-        # Animations (4 images pour chaque direction)
         self.walk_front = sprites["walk_front"]
         self.walk_back = sprites["walk_back"]
         self.walk_left = sprites["walk_left"]
         self.walk_right = sprites["walk_right"]
 
-        # Animation state
         self.frame_index = 0.0
         self.animation_speed = 0.1
         self.current_anim = self.walk_front
         self.image = self.walk_front[0]
 
-        # positions float (déplacements fluides)
         self.x = float(x)
         self.y = float(y)
 
     def collision(self, obstacles):
-        """Retourne True si collision rect avec un obstacle."""
-        for obj in obstacles:
-            if self.rect.colliderect(obj):
-                return True
-        return False
+        return any(self.rect.colliderect(obj) for obj in obstacles)
 
     def move(self, keys, obstacles):
-        """
-        Déplacements :
-        - Q/A = gauche
-        - D = droite
-        - Z/W = haut
-        - S = bas
-        Support AZERTY et QWERTY.
-        """
         moving = False
-        old_x, old_y = self.x, self.y  # sauvegarde pour annuler en cas de collision
+        old_x, old_y = self.x, self.y
 
-        # Mouvement (une direction à la fois, comme ton code initial avec elif)
+        # Une seule direction à la fois, comme dans ton comportement d'origine.
         if keys[pygame.K_q] or keys[pygame.K_a]:
             self.x -= self.speed
             self.current_anim = self.walk_left
@@ -320,17 +389,14 @@ class Player:
             self.current_anim = self.walk_front
             moving = True
 
-        # update rect temporaire
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
 
-        # collisions
         if self.collision(obstacles):
             self.x, self.y = old_x, old_y
             self.rect.x = int(self.x)
             self.rect.y = int(self.y)
 
-        # animation
         if moving:
             self.frame_index += self.animation_speed
             if self.frame_index >= len(self.current_anim):
@@ -340,7 +406,6 @@ class Player:
             self.frame_index = 0
             self.image = self.current_anim[0]
 
-        # limites écran
         if self.rect.left < 0:
             self.rect.left = 0
             self.x = self.rect.x
@@ -362,22 +427,18 @@ class Player:
 
 
 class ImageButton:
-    """Bouton image avec effet hover (assombri + léger zoom) + détection clic."""
+    """Bouton image avec hover visuel + détection du clic."""
 
     def __init__(self, image, pos, scale_hover=1.08):
         self.image = image
         self.image_dark = darken_image(image)
-
         self.rect = self.image.get_rect(topleft=pos)
 
-        # --- images agrandies ---
         w, h = image.get_size()
         self.image_hover = pygame.transform.smoothscale(
             self.image, (int(w * scale_hover), int(h * scale_hover))
         )
         self.image_dark_hover = darken_image(self.image_hover)
-
-        # rect centrée (pour éviter le saut)
         self.rect_hover = self.image_hover.get_rect(center=self.rect.center)
 
     def draw(self, screen):
@@ -395,25 +456,24 @@ class ImageButton:
 
 
 class Pickup:
-    """Object ramassable (ex: couteau)"""
+    """Objet ramassable."""
+
     def __init__(self, name, rect, image=None):
         self.name = name
-        self.rect = pygame.Rect(rect)  # (x, y, w, h)
+        self.rect = pygame.Rect(rect)
         self.image = image
 
     def draw(self, screen):
         if self.image:
             screen.blit(self.image, self.rect)
         else:
-            # si pas d'image, dessiner rect jaune
             pygame.draw.rect(screen, (200, 200, 60), self.rect)
 
-    def can_pickup(self, player_rect, radius=40):
-        """Vrai si joueur assez proche pr ramasser"""
-        px, py = player_rect.center  # centre du joueur
-        ix, iy = self.rect.center    # centre de l'objet
-        dx, dy = px - ix, py - iy    # distance entre les centres
-        return (dx * dx + dy * dy) <= radius * radius  # distance² <= radius²
+    def can_pickup(self, player_rect, radius=PICKUP_RADIUS):
+        px, py = player_rect.midbottom
+        ix, iy = self.rect.center
+        dx, dy = px - ix, py - iy
+        return (dx * dx + dy * dy) <= radius * radius
 
 
 # =========================
@@ -421,7 +481,7 @@ class Pickup:
 # =========================
 
 def load_image(path, size=None, alpha=True):
-    """Charge une image et (optionnellement) la redimensionne."""
+    """Charge une image et la redimensionne si besoin."""
     img = pygame.image.load(path)
     img = img.convert_alpha() if alpha else img.convert()
     if size is not None:
@@ -430,10 +490,14 @@ def load_image(path, size=None, alpha=True):
 
 
 def load_player_sprites(scale=2):
-    """Charge et scale les sprites du joueur."""
-    def load(Victor):
-        img = pygame.image.load(VB_DIR / Victor).convert_alpha()
-        return pygame.transform.scale(img, (img.get_width() * scale, img.get_height() * scale))
+    """Charge les sprites du joueur."""
+    def load(filename):
+        img = pygame.image.load(VB_DIR / filename).convert_alpha()
+        return pygame.transform.scale(
+            img,
+            (int(img.get_width() * scale), int(img.get_height() * scale))
+        )
+
     return {
         "walk_front": [load("F.png"), load("FLF.png"), load("F.png"), load("FRF.png")],
         "walk_back":  [load("B.png"), load("BLF.png"), load("B.png"), load("BRF.png")],
@@ -443,32 +507,40 @@ def load_player_sprites(scale=2):
 
 
 def load_assets():
-    """Centralise tous les chargements (images + audio) pour éviter de recharger en boucle."""
+    """Centralise tous les chargements d'assets."""
     assets = {}
 
-    # --- Images écrans ---
     assets["menu_bg"] = load_image(IMG_DIR / "menu.png", alpha=False)
     assets["game_bg"] = load_image(IMG_DIR / "game_bg.png", alpha=False)
     assets["game_bg2"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
-    assets["game_bg3"] = load_image(IMG_DIR / "game_bg3.png", alpha=False)
+    assets["game_bg3"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
+    assets["game_bg4"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
+    assets["game_bg5"] = load_image(IMG_DIR / "game_bg2.png", alpha=False)
     assets["info_bg"] = load_image(IMG_DIR / "INFO_page.png", alpha=False)
     assets["fin_bg"] = load_image(IMG_DIR / "FIN_page.png", alpha=False)
+    assets["win_bg"] = load_image(IMG_DIR / "WIN_page.png", size=(SCREEN_WIDTH, SCREEN_HEIGHT), alpha=False)
 
-    # --- Boutons ---
     assets["btn_play"] = load_image(IMG_DIR / "JOUER_bouton.png", size=(200, 80))
     assets["btn_info"] = load_image(IMG_DIR / "INFO_bouton.png", size=(200, 80))
     assets["btn_quit"] = load_image(IMG_DIR / "QUITTER_bouton.png", size=(200, 80))
     assets["btn_replay"] = load_image(IMG_DIR / "REJOUER_bouton.png", size=(200, 80))
     assets["btn_back"] = load_image(IMG_DIR / "retour.png", size=(80, 40))
 
-    # --- Décors ---
     lit = load_image(IMG_DIR / "lit.png")
     table = load_image(IMG_DIR / "table.png")
-    assets["lit"] = pygame.transform.scale(lit, (int(lit.get_width() * 0.5), int(lit.get_height() * 0.5)))
-    assets["table"] = pygame.transform.scale(table, (int(table.get_width() * 0.5), int(table.get_height() * 0.45)))
+    assets["lit"] = pygame.transform.scale(
+        lit, (int(lit.get_width() * 0.5), int(lit.get_height() * 0.5))
+    )
+    assets["table"] = pygame.transform.scale(
+        table, (int(table.get_width() * 0.5), int(table.get_height() * 0.45))
+    )
 
-    # --- Pickups/PNGs ---
-    assets["glass"] = load_image(IMG_DIR / "glass.png", size=(50, 50))  # choose size you want
+    assets["glass"] = load_image(IMG_DIR / "glass.png", size=(50, 50))
+    assets["knife"] = load_image(IMG_DIR / "knife.png", size=(70, 70))
+    assets["enemy"] = load_image(IMG_DIR / "enemy.png", size=(80, 80))
+    assets["zombie"] = load_image(IMG_DIR / "zombie.png", size=(140, 140))
+    assets["player_sprites"] = load_player_sprites(scale=2.5)
+
     clare_path = IMG_DIR / "clare.png"
     if clare_path.exists():
         assets["clare"] = load_image(clare_path, size=CLARE_SIZE)
@@ -477,19 +549,16 @@ def load_assets():
         fallback.fill((150, 110, 70))
         pygame.draw.rect(fallback, (230, 220, 180), fallback.get_rect(), 2)
         assets["clare"] = fallback
-    
-    assets["enemy"] = load_image(IMG_DIR / "enemy.png", size=(40, 40))
 
-    # --- Joueur ---
-    assets["player_sprites"] = load_player_sprites(scale=2.5)
-
-    # --- Audio ---
     pygame.mixer.music.load(str(AUDIO_DIR / "28days_soundtrack.ogg"))
     pygame.mixer.music.set_volume(1.0)
-    pygame.mixer.music.play(-1)  # musique de fond en boucle
+    pygame.mixer.music.play(-1)
 
     assets["click_sound"] = pygame.mixer.Sound(str(AUDIO_DIR / "click_sound.ogg"))
     assets["click_sound"].set_volume(0.2)
+
+    assets["kill_sound"] = pygame.mixer.Sound(str(AUDIO_DIR / "kill_sound.ogg"))
+    assets["kill_sound"].set_volume(0.3)
 
     assets["heal"] = pygame.mixer.Sound(str(AUDIO_DIR / "heal.ogg"))
     assets["heal"].set_volume(0.2)
@@ -498,17 +567,14 @@ def load_assets():
 
 
 # =========================
-# Ecrans / States
+# Écrans
 # =========================
 
 def menu_screen(screen, assets):
-    """Ecran menu : boutons Jouer / Info."""
-    screen_width, screen_height = SCREEN_WIDTH, SCREEN_HEIGHT
+    play_rect = assets["btn_play"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    info_rect = assets["btn_info"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
 
-    play_rect = assets["btn_play"].get_rect(center=(screen_width // 2, screen_height // 2))
     play_button = ImageButton(assets["btn_play"], play_rect.topleft)
-
-    info_rect = assets["btn_info"].get_rect(center=(screen_width // 2, screen_height // 2 + 100))
     info_button = ImageButton(assets["btn_info"], info_rect.topleft)
 
     while True:
@@ -519,11 +585,9 @@ def menu_screen(screen, assets):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
-
             if play_button.is_clicked(event):
                 assets["click_sound"].play()
                 return "game"
-
             if info_button.is_clicked(event):
                 assets["click_sound"].play()
                 return "info"
@@ -532,7 +596,6 @@ def menu_screen(screen, assets):
 
 
 def info_screen(screen, assets):
-    """Ecran info avec bouton retour."""
     retour_rect = assets["btn_back"].get_rect(topright=(SCREEN_WIDTH - 10, 10))
     retour_button = ImageButton(assets["btn_back"], retour_rect.topleft)
 
@@ -543,7 +606,6 @@ def info_screen(screen, assets):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
-
             if retour_button.is_clicked(event):
                 assets["click_sound"].play()
                 return "menu"
@@ -552,15 +614,38 @@ def info_screen(screen, assets):
 
 
 def fin_screen(screen, assets):
-    """Ecran de fin : rejouer / quitter."""
     quitter_rect = assets["btn_quit"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-    quitter_button = ImageButton(assets["btn_quit"], quitter_rect.topleft)
-
     rejouer_rect = assets["btn_replay"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
+
+    quitter_button = ImageButton(assets["btn_quit"], quitter_rect.topleft)
     rejouer_button = ImageButton(assets["btn_replay"], rejouer_rect.topleft)
 
     while True:
         screen.blit(assets["fin_bg"], (0, 0))
+        quitter_button.draw(screen)
+        rejouer_button.draw(screen)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if rejouer_button.is_clicked(event):
+                assets["click_sound"].play()
+                return "menu"
+            if quitter_button.is_clicked(event):
+                return "quit"
+
+        pygame.display.update()
+
+def win_screen(screen, assets):
+    """Ecran de victoire : rejouer / quitter."""
+    quitter_rect = assets["btn_quit"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    rejouer_rect = assets["btn_replay"].get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
+
+    quitter_button = ImageButton(assets["btn_quit"], quitter_rect.topleft)
+    rejouer_button = ImageButton(assets["btn_replay"], rejouer_rect.topleft)
+
+    while True:
+        screen.blit(assets["win_bg"], (0, 0))
         quitter_button.draw(screen)
         rejouer_button.draw(screen)
 
@@ -579,176 +664,214 @@ def fin_screen(screen, assets):
 
 
 def game_screen(screen, assets, font):
-
-    """Boucle du jeu : décor, obstacles, joueur, inventaire, vie, retour menu."""
     global inv_selected
+
     inv_reset()
+    result = intro_overlay(screen, font, intro_lines, delay=5000)
+
+    if result == "quit":
+        return "quit"
+    
     clare_open = False
     clare_index = 0
 
-    # Bouton retour
     retour_rect = assets["btn_back"].get_rect(topright=(SCREEN_WIDTH - 10, 10))
     retour_button = ImageButton(assets["btn_back"], retour_rect.topleft)
 
-    # Room 1: décor + obstacles
+    # =========================
+    # Rooms / décors / obstacles
+    # =========================
+
     room1_lit_rect = assets["lit"].get_rect(topleft=(20, 55))
     room1_table_rect = assets["table"].get_rect(topleft=(30, 350))
-    room1_obstacles = [room1_lit_rect, room1_table_rect]
     room1_decors = [(assets["lit"], room1_lit_rect), (assets["table"], room1_table_rect)]
-
-    # Room 2: vide (aucun décor / obstacle)
-    # Room 2: Clare is visible AND collideable
-    room2_decors = []
+    room1_obstacles = [room1_lit_rect, room1_table_rect]
 
     clare_img = assets["clare"]
     clare_rect = clare_img.get_rect(topleft=CLARE_POS)
     clare_box_rect = pygame.Rect(CLARE_BOX_POS, CLARE_BOX_SIZE)
-    clare_open = False
-
+    room2_decors = [(clare_img, clare_rect)]
     room2_obstacles = [clare_rect]
-    clare_box_rect = pygame.Rect(CLARE_BOX_POS, CLARE_BOX_SIZE)
-    clare_open = False
 
-    # Pickups (ramassables) par room
-    glass_img = assets["glass"]
-    pickups_room1 = [Pickup("Verre",
-                        rect=(500, 420, 
-                        glass_img.get_width(), glass_img.get_height()), image=glass_img)]
-    pickups_room2 = []
-    pickups_room3 = []
+    room3_lit_rect = assets["lit"].get_rect(topleft=(400, 55))
+    room3_decors = [(assets["lit"], room3_lit_rect)]
+    room3_obstacles = [room3_lit_rect]
 
-    # Room 3: vide
-    room3_decors = []
-    room3_obstacles = []
-
-    room_obstacles = {1: room1_obstacles, 2: room2_obstacles, 3: room3_obstacles}
-    room_pickups = {1: pickups_room1, 2: pickups_room2, 3: pickups_room3}
-
-    #ENNEMIES
-    
-        # Enemies by room
-    enemies_room1 = []
-
-    enemies_room2 = []
-
-    enemies_room3 = [
-        Enemy(x=300, y=220, width=50, height=50, speed=2.0,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT, image=assets["enemy"]),
-        Enemy(x=650, y=400, width=40, height=40, speed=1.0,
-              screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT, image=assets["enemy"])
-    ]
-
-    room_enemies = {
-        1: enemies_room1,
-        2: enemies_room2,
-        3: enemies_room3,
+    room_decors = {
+        1: room1_decors,
+        2: room2_decors,
+        3: room3_decors,
+        4: [],
+        5: [],
     }
 
+    room_obstacles = {
+        1: room1_obstacles,
+        2: room2_obstacles,
+        3: room3_obstacles,
+        4: [],
+        5: [],
+    }
+
+    room_backgrounds = {
+        1: assets["game_bg"],
+        2: assets["game_bg2"],
+        3: assets["game_bg3"],
+        4: assets["game_bg4"],
+        5: assets["game_bg5"],
+    }
+
+    # =========================
+    # Pickups
+    # =========================
+
+    glass_img = assets["glass"]
+    knife_img = assets["knife"]
+
+    room_pickups = {
+        1: [Pickup("Verre", (500, 420, glass_img.get_width(), glass_img.get_height()), image=glass_img)],
+        2: [Pickup("Couteau", (500, 300, knife_img.get_width(), knife_img.get_height()), image=knife_img)],
+        3: [],
+        4: [],
+        5: [],
+    }
+
+    # =========================
+    # Ennemis
+    # =========================
+
+    room_enemies = {
+        1: [],
+        2: [],
+        3: [
+            Enemy(300, 220, 70, 70, 2.0, image=assets["enemy"], enemy_type="enemy"),
+            Enemy(650, 400, 40, 40, 1.0, image=assets["enemy"], enemy_type="enemy"),
+        ],
+        4: [
+            Enemy(300, 220, 70, 70, 2.0, image=assets["zombie"], enemy_type="zombie"),
+        ],
+        5: [
+            Enemy(550, 50, 40, 40, 3.0, image=assets["enemy"], enemy_type="enemy"),
+            Enemy(650, 400, 40, 40, 4.0, image=assets["zombie"], enemy_type="zombie"),
+        ],
+    }
+
+    total_enemies = sum(len(enemies) for enemies in room_enemies.values())
+
+    # =========================
     # Joueur
+    # =========================
+
     player = Player(
-        x=375, y=275, width=64, height=64,
-        speed=4.0,
-        screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT,
-        sprites=assets["player_sprites"]
+        x=375,
+        y=275,
+        width=64,
+        height=64,
+        speed=9.0,
+        screen_width=SCREEN_WIDTH,
+        screen_height=SCREEN_HEIGHT,
+        sprites=assets["player_sprites"],
     )
 
     player_health = HEALTH_MAX
-    clock = pygame.time.Clock()
     current_room = 1
-
-    def draw_pickups(pickups):
-        for p in pickups:
-            if p.image:
-                screen.blit(p.image, p.rect)
-            else:
-                pygame.draw.rect(screen, (200, 200, 60), p.rect)
+    last_attack_time = 0
+    clock = pygame.time.Clock()
 
     def draw_room(room_id):
-        if room_id == 1:
-            screen.blit(assets["game_bg"], (0, 0))
-            for img, rect in room1_decors:
-                screen.blit(img, rect)
-            draw_pickups(pickups_room1)
-        elif room_id == 2:
-            screen.blit(assets["game_bg2"], (0, 0))
-            for img, rect in room2_decors:
-                screen.blit(img, rect)
-            draw_pickups(pickups_room2)
-            screen.blit(clare_img, clare_rect)
-        else:
-            screen.blit(assets["game_bg3"], (0, 0))
-            for img, rect in room3_decors:
-                screen.blit(img, rect)
-            draw_pickups(pickups_room3)
+        screen.blit(room_backgrounds[room_id], (0, 0))
+        for img, rect in room_decors[room_id]:
+            screen.blit(img, rect)
+        for pickup in room_pickups[room_id]:
+            pickup.draw(screen)
 
     while True:
+
+        dt = clock.tick(FPS) / 1000.0
+        now = pygame.time.get_ticks()
         
-        dt = clock.tick(FPS) / 1000.0  # secondes depuis la dernière frame
-        
-        # diminution de la vie
         player_health = max(0, player_health - HEALTH_DECAY_PER_SEC * dt)
         if player_health <= 0:
             return "fin"
 
-        # update joueur
         keys = pygame.key.get_pressed()
         current_obstacles = room_obstacles[current_room]
-        player.update(keys, current_obstacles)
-
+        current_pickups = room_pickups[current_room]
         current_enemies = room_enemies[current_room]
 
+        player.update(keys, current_obstacles)
+
         for enemy in current_enemies:
-            enemy.update(player.rect, current_obstacles)
-
+            enemy.update(player.rect, current_obstacles, dt * 1000)
             if player.rect.colliderect(enemy.rect):
-                player_health = max(0, player_health - 20 * dt)
+                player_health = max(0, player_health - enemy.damage_to_player * dt)
 
-        # Changement instantane de salle sur les bords
+        # Passage entre salles.
         if current_room == 1 and player.rect.right >= SCREEN_WIDTH:
             current_room = 2
             player.rect.left = 10
-            player.x = player.rect.x
+            player.x = float(player.rect.x)
         elif current_room == 2 and player.rect.left <= 0:
             current_room = 1
             player.rect.right = SCREEN_WIDTH - 10
-            player.x = player.rect.x
+            player.x = float(player.rect.x)
         elif current_room == 2 and player.rect.right >= SCREEN_WIDTH:
             current_room = 3
             player.rect.left = 10
-            player.x = player.rect.x
+            player.x = float(player.rect.x)
         elif current_room == 3 and player.rect.left <= 0:
             current_room = 2
             player.rect.right = SCREEN_WIDTH - 10
-            player.x = player.rect.x
+            player.x = float(player.rect.x)
+        elif current_room == 3 and player.rect.right >= SCREEN_WIDTH:
+            current_room = 4
+            player.rect.left = 10
+            player.x = float(player.rect.x)
+        elif current_room == 4 and player.rect.left <= 0:
+            current_room = 3
+            player.rect.right = SCREEN_WIDTH - 10
+            player.x = float(player.rect.x)
+        elif current_room == 4 and player.rect.right >= SCREEN_WIDTH:
+            current_room = 5
+            player.rect.left = 10
+            player.x = float(player.rect.x)
+        elif current_room == 5 and player.rect.left <= 0:
+            current_room = 4
+            player.rect.right = SCREEN_WIDTH - 10
+            player.x = float(player.rect.x)
 
-        current_pickups = room_pickups[current_room]
         clare_near = (
-        current_room == 2
-        and player.rect.inflate(CLARE_READ_RADIUS * 2, CLARE_READ_RADIUS * 2).colliderect(clare_rect)
-)
+            current_room == 2
+            and player.rect.inflate(CLARE_READ_RADIUS * 2, CLARE_READ_RADIUS * 2).colliderect(clare_rect)
+        )
+
         if not clare_near:
             clare_open = False
 
-        # --- draw world ---
+        pickup_target = next(
+            (pickup for pickup in current_pickups if pickup.can_pickup(player.rect)),
+            None
+        )
 
-        draw_room(current_room)
-
-        for enemy in current_enemies:
-            enemy.draw(screen)
-
-        screen.blit(player.image, player.rect)
-
-        # --- pickup in range? ---
-        pickup_target = None
-        for p in current_pickups:
-            if p.can_pickup(player.rect, radius=PICKUP_RADIUS):
-                pickup_target = p
-                break
         heal_table_near = (
             current_room == 1
             and player.rect.colliderect(room1_table_rect.inflate(100, 100))
         )
 
+        # =========================
+        # Draw
+        # =========================
+
+        draw_room(current_room)
+        
+
+        for enemy in current_enemies:
+            enemy.draw(screen)
+
+        player.draw(screen)
+        draw_darkness_overlay(screen, player.rect, radius=140)
+        draw_enemy_counter(screen, font, f"il reste {total_enemies} ennemis a tuer", 400, 25)
+        
         if pickup_target:
             draw_prompt(screen, font, "appuyer sur E pour ramasser", 10, 40)
         elif heal_table_near:
@@ -758,23 +881,29 @@ def game_screen(screen, assets, font):
             draw_prompt(screen, font, "appuyer sur E pour parler", 10, 40)
 
         if clare_open:
-
             draw_text_box(screen, font, CLARE_TEXT[clare_index], clare_box_rect)
-            
 
-        # UI
+        weapon = inv_items[inv_selected]
+        if weapon is not None:
+            for enemy in current_enemies:
+                px, py = player.rect.center
+                ex, ey = enemy.rect.center
+                dx, dy = px - ex, py - ey
+                if dx * dx + dy * dy <= ATTACK_RADIUS ** 2:
+                    draw_prompt(screen, font, "appuyer sur espace pour attaquer", 10, 70)
+                    break
+
         inv_draw(screen, SCREEN_WIDTH, SCREEN_HEIGHT, font)
         draw_health_bar(screen, player_health, HEALTH_MAX, HEALTH_BAR_POS, HEALTH_BAR_SIZE)
 
-        retour_button.draw(screen)
+        # =========================
+        # Events
+        # =========================
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
 
-            if retour_button.is_clicked(event):
-                assets["click_sound"].play()
-                return "menu"
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
@@ -782,17 +911,45 @@ def game_screen(screen, assets, font):
                 elif event.key == pygame.K_2:
                     inv_selected = 1
 
-                if event.key == pygame.K_t:
-                    inv_add(assets["glass"])
+                elif event.key == ATTACK_KEY:
+                    weapon = inv_items[inv_selected]
 
-                if event.key == PICKUP_KEY:
-                    # Prioritise the closest interaction tied to the E key.
+                    if weapon is not None and now - last_attack_time >= ATTACK_COOLDOWN:
+                        last_attack_time = now
+
+                        if weapon == assets["glass"]:
+                            weapon_name = "glass"
+                        elif weapon == assets["knife"]:
+                            weapon_name = "knife"
+                        else:
+                            weapon_name = None
+
+                        if weapon_name is not None:
+                            px, py = player.rect.center
+
+                            for enemy in current_enemies[:]:
+                                ex, ey = enemy.rect.center
+                                dx, dy = px - ex, py - ey
+
+                                if dx * dx + dy * dy <= ATTACK_RADIUS ** 2:
+                                    dead = enemy.take_damage(weapon_name)
+                                    if dead:
+                                        current_enemies.remove(enemy)
+                                        total_enemies = max(0, total_enemies - 1)
+                                        assets["kill_sound"].play()
+
+                                        if total_enemies == 0:
+                                            return "win"
+                                    break
+                                
+
+                elif event.key == PICKUP_KEY:
+                    # Une seule interaction à la fois avec la touche E.
                     if pickup_target:
                         if inv_add(pickup_target.image):
                             assets["click_sound"].play()
                             current_pickups.remove(pickup_target)
                         else:
-                            # inventory full feedback
                             assets["click_sound"].play()
                     elif heal_table_near:
                         assets["heal"].play()
@@ -803,11 +960,11 @@ def game_screen(screen, assets, font):
                             clare_index = 0
                         else:
                             clare_index += 1
+                            if clare_index >= len(CLARE_TEXT):
+                                clare_open = False
+                                clare_index = 0
 
-                        if clare_index >= len(CLARE_TEXT):
-                            clare_open = False
-
-                if event.key == pygame.K_l:
+                elif event.key == pygame.K_l:
                     assets["click_sound"].play()
                     return "fin"
 
@@ -815,7 +972,7 @@ def game_screen(screen, assets, font):
 
 
 # =========================
-# Main (machine à états)
+# Main
 # =========================
 
 def main():
@@ -840,9 +997,11 @@ def main():
             state = info_screen(screen, assets)
         elif state == "fin":
             state = fin_screen(screen, assets)
+        elif state == "win":
+            state = win_screen(screen, assets)
         elif state == "quit":
             running = False
-        else:  # si on sait pas l'état du jeu on quitte au cas ou => risque de bugs
+        else:
             running = False
 
     pygame.quit()
